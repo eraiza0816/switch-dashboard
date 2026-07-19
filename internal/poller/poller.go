@@ -115,10 +115,10 @@ func (p *Poller) poll() {
 		port := entry.PortNum
 		key := p.ip + ":" + itoa(int64(port))
 
-		txBytes := parseHex(entry.TxG)
-		rxBytes := parseHex(entry.RxG)
 		txPackets := parseHex(entry.TxG)
 		rxPackets := parseHex(entry.RxG)
+		txBytes := txPackets * 800
+		rxBytes := rxPackets * 800
 
 		speedStr := linkSpeedToString(entry.Link)
 		speedBPS := ParseLinkSpeed(speedStr)
