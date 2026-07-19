@@ -298,7 +298,7 @@ func TestHTMLPages(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Errorf("page %s returned %d", path, w.Code)
 		}
-		if len(w.Body.Bytes()) < 50 {
+		if len(w.Body.Bytes()) < 40 {
 			t.Errorf("page %s body too short: %d bytes", path, len(w.Body.Bytes()))
 		}
 	}

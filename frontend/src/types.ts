@@ -69,6 +69,9 @@ interface PortState {
   speed_tx_bps: number;
   speed_rx_bps: number;
   note?: string;
+  is_sfp?: boolean;
+  sfp_vendor?: string;
+  sfp_model?: string;
 }
 
 interface MACEntry {

@@ -224,7 +224,7 @@ const COLUMN_DEFS = {
     tdClassFn: (p) => speedClass(p.speed, p.status),
     tdTitleFn: (p) => p.duplex || '',
     render: (p, sw) => {
-      const isSfp = (p.port === '9' || (p.speed || '').toLowerCase().includes('10g') || p.port === 'SFP' || p.port === '9/SFP');
+      const isSfp = p.is_sfp;
       const speed = p.speed || 'Auto';
       if (isSfp) {
         return `<span class="sfp-speed-link" onclick="openTransceiver('${sw.ip}','${p.port}','${sw.name}')" title="Click to view SFP+ Transceiver Diagnostics">${speed} <svg viewBox="0 0 24 24" style="width: 10px; height: 10px; fill: currentColor; display: inline-block;"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0-7C7 2 2.73 5.11 1 9.5 2.73 13.89 7 17 12 17s9.27-3.11 11-7.5C21.27 5.11 17 2 12 2zm0 13a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg></span>`;
@@ -825,7 +825,7 @@ function renderSwitch(sw) {
   const rawPorts = sw.ports || [];
   
   const portHtmlList = rawPorts.map(p => {
-    const isSfp = (p.port === '9' || (p.speed || '').toLowerCase().includes('10g') || p.port === 'SFP' || p.port === '9/SFP');
+    const isSfp = p.is_sfp;
     const color = getPortColor(p);
     
     let tooltipParts = [];

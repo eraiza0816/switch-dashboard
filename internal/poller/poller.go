@@ -206,6 +206,9 @@ func (p *Poller) poll() {
 			SpeedTX:   speedTX,
 			SpeedRX:   speedRX,
 			Note:      p.notes[noteKey],
+			IsSFP:     entry.IsSFP != 0,
+			SFPVendor: entry.SFPVendor,
+			SFPModel:  entry.SFPModel,
 		}
 		ports = append(ports, ps)
 

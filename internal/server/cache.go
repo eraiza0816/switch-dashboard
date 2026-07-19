@@ -20,6 +20,9 @@ type PortState struct {
 	SpeedTX   int64  `json:"speed_tx_bps"`
 	SpeedRX   int64  `json:"speed_rx_bps"`
 	Note      string `json:"note,omitempty"`
+	IsSFP     bool   `json:"is_sfp,omitempty"`
+	SFPVendor string `json:"sfp_vendor,omitempty"`
+	SFPModel  string `json:"sfp_model,omitempty"`
 }
 
 type SwitchData struct {
