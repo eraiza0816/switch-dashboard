@@ -137,6 +137,7 @@ func (s *Server) registerRoutes() {
 		r.Get("/vendors", s.handleAPIGetVendors)
 		r.Post("/vendors", s.handleAPISaveVendors)
 		r.Post("/vendors/update_oui", s.handleAPIUpdateOUI)
+		r.Post("/clients/update_host", s.handleAPIUpdateHost)
 
 		r.Get("/openapi.json", s.handleOpenAPI)
 	})
