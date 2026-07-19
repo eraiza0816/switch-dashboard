@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { t, setLang, getLang } from './i18n';
+
 const REFRESH_SECONDS = (window.__DATA__ && window.__DATA__.refresh) || 30;
 const enabledColumns = (window.__DATA__ && window.__DATA__.columns) || ['port', 'status', 'speed', 'packets', 'bytes', 'info', 'notes'];
 const PORTS_WRAP_THRESHOLD = (window.__DATA__ && window.__DATA__.portWrap) || 0;

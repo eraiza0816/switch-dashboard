@@ -11,11 +11,11 @@
 <div class="header">
   <h1>{{ .Title }} - Settings</h1>
   <div class="nav-links">
-    <a href="/">Dashboard</a>
-    <a href="/map">Map</a>
-    <a href="/config" class="active">Config</a>
-    <a href="/backups">Backups</a>
-    <a href="/logs">Logs</a>
+    <a href="/" data-i18n="nav.dashboard">Dashboard</a>
+    <a href="/map" data-i18n="nav.map">Map</a>
+    <a href="/config" class="active" data-i18n="nav.config">Config</a>
+    <a href="/backups" data-i18n="nav.backups">Backups</a>
+    <a href="/logs" data-i18n="nav.logs">Logs</a>
   </div>
 </div>
 
@@ -33,6 +33,13 @@
 <div style="flex:1;">
 <label>Refresh Interval (seconds)</label>
 <input type="number" name="refresh_interval" value="{{ .Refresh }}" min="1" max="300">
+</div>
+<div style="flex:1;">
+<label>Language</label>
+<select id="lang-select" style="width:100%;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#c9d1d9;font-size:14px;" onchange="setLang(this.value)">
+<option value="en">English</option>
+<option value="ja">日本語</option>
+</select>
 </div>
 </div>
 </div>
@@ -75,8 +82,20 @@
 </form>
 
 <div class="footer">
-<a href="/">Dashboard</a> &middot; <a href="/api-docs">API</a> &middot; <span class="version-badge">v{{ .Version }}</span>
+<a href="/" data-i18n="footer.back">Dashboard</a> &middot; <a href="/api-docs" data-i18n="footer.api">API</a> &middot; <span class="version-badge">v{{ .Version }}</span>
 </div>
 </div>
+<script src="/static/dist/dashboard.js"></script>
+<script>
+// Set language selector to saved preference
+var lang = localStorage.getItem('dashboard_lang');
+if (lang === 'ja' || lang === 'en') {
+  document.getElementById('lang-select').value = lang;
+}
+document.getElementById('lang-select').addEventListener('change', function() {
+  localStorage.setItem('dashboard_lang', this.value);
+  window.location.reload();
+});
+</script>
 </body>
 </html>
