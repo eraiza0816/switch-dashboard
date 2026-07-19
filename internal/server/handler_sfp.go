@@ -2,10 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -82,21 +79,4 @@ func parseSFPFromSwitchData(sw *SwitchData) *sfpTransceiverData {
 	return nil
 }
 
-func parseHexVal(h string) float64 {
-	h = strings.TrimPrefix(h, "0x")
-	parts := strings.Split(h, "-")
-	if len(parts) == 2 {
-		a, _ := strconv.ParseInt(parts[0], 16, 32)
-		b, _ := strconv.ParseInt(parts[1], 16, 32)
-		return float64(a*256 + b)
-	}
-	v, _ := strconv.ParseInt(h, 16, 64)
-	return float64(v)
-}
 
-func diagToPower(val float64) float64 {
-	if val <= 0 {
-		return math.Inf(-1)
-	}
-	return 10 * math.Log10(val*0.0001)
-}

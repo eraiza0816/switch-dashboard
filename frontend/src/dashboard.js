@@ -555,6 +555,21 @@ function manualRefreshMac(ip) {
     });
 }
 
+async function switchConsole(ip) {
+  const cmd = prompt('Enter CLI command (e.g. show, port 5 1g):');
+  if (!cmd) return;
+  try {
+    const res = await fetch(`/api/switches/${ip}/cmd`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({cmd})
+    });
+    const data = await res.json();
+    alert('Response: ' + (data.response || 'OK'));
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
 function backupConfig(ip, element) {
   if (element.dataset.loading === 'true') return;
   element.dataset.loading = 'true';
@@ -1030,7 +1045,8 @@ function renderSwitch(sw) {
           <span style="font-size:12px;color:#b1bac4;display:flex;align-items:center;gap:8px;">
             <a href="http://${sw.ip}/" target="_blank" style="color:#58a6ff;text-decoration:none" title="Open switch web UI">${sw.ip}</a>
             <span style="color:#30363d">|</span>
-            <a href="#" onclick="backupConfig('${sw.ip}', this); return false;" style="color:#58a6ff;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Backup configuration on server">💾 Backup</a>
+            <a href="#" onclick="backupConfig('${sw.ip}', this); return false;" style="color:#58a6ff;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Backup configuration"> Backup</a>
+            <a href="#" onclick="switchConsole('${sw.ip}'); return false;" style="color:#8b949e;text-decoration:none;font-weight:600;font-size:11px;" title="Send CLI command"> Console</a>
           </span>
         </div>
       </div>

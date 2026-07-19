@@ -148,7 +148,8 @@ var t=window.__DATA__&&window.__DATA__.refresh||30,Wq=window.__DATA__&&window.__
           <span style="font-size:12px;color:#b1bac4;display:flex;align-items:center;gap:8px;">
             <a href="http://${q.ip}/" target="_blank" style="color:#58a6ff;text-decoration:none" title="Open switch web UI">${q.ip}</a>
             <span style="color:#30363d">|</span>
-            <a href="#" onclick="backupConfig('${q.ip}', this); return false;" style="color:#58a6ff;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Backup configuration on server">\uD83D\uDCBE Backup</a>
+            <a href="#" onclick="backupConfig('${q.ip}', this); return false;" style="color:#58a6ff;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="Backup configuration"> Backup</a>
+            <a href="#" onclick="switchConsole('${q.ip}'); return false;" style="color:#8b949e;text-decoration:none;font-weight:600;font-size:11px;" title="Send CLI command"> Console</a>
           </span>
         </div>
       </div>
