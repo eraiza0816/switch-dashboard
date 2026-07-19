@@ -21,67 +21,65 @@ func newTestServer() *httptest.Server {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		http.SetCookie(w, &http.Cookie{Name: "session", Value: "test-session"})
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "test"})
 		w.WriteHeader(http.StatusOK)
 	})
 
 	mux.HandleFunc("/information.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(Information{
-			IP:       "192.168.10.247",
-			GW:       "192.168.10.1",
-			Mask:     "255.255.255.0",
-			MAC:      "AA:BB:CC:DD:EE:FF",
-			SwVer:    "v0.1.0",
-			Build:    "2024-01-01",
-			HWVer:    "HC-SWTGW218AS",
-			Flash:    2097152,
-			Hostname: "test-switch",
-			Telnet:   0,
-			Web:      1,
-			SFP0:     "Lightron Inc.",
-			SFP1:     "",
+			IPAddress:     "192.168.10.247",
+			IPGateway:     "192.168.10.1",
+			IPNetmask:     "255.255.255.0",
+			TelnetEnabled: "0",
+			WebEnabled:    "1",
+			MACAddress:    "AA:BB:CC:DD:EE:FF",
+			SwVer:         "v0.1.0",
+			BuildDate:     "2024-01-01",
+			HWVer:         "HC-SWTGW218AS",
+			FlashSize:     "2MB",
+			Hostname:      "test-switch",
 		})
 	})
 
 	mux.HandleFunc("/status.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]StatusEntry{
-			{PortNum: 1, Name: "port1", Link: 4, Enabled: 1, TxG: "0x100", RxG: "0x200", TxB: "0x0", RxB: "0x0"},
-			{PortNum: 2, Name: "port2", Link: 0, Enabled: 1, TxG: "0x0", RxG: "0x0", TxB: "0x0", RxB: "0x0"},
-			{PortNum: 9, Name: "sfp1", Link: 4, Enabled: 1, SFP: "Lightron Inc. WSPXG-ES3LC-IHA", TxG: "0x10", RxG: "0x20", TxB: "0x0", RxB: "0x0"},
+			{PortNum: 1, LogPort: 4, Name: "port1", IsSFP: 0, Enabled: 1, Link: 4, Adv: "100000", TxG: "0x100", RxG: "0x200", TxB: "0x0", RxB: "0x0"},
+			{PortNum: 2, LogPort: 5, IsSFP: 0, Enabled: 1, Link: 0, Adv: "000011", TxG: "0x0", RxG: "0x0", TxB: "0x0", RxB: "0x0"},
+			{PortNum: 9, LogPort: 8, IsSFP: 1, Enabled: 1, SFPVendor: "Lightron Inc.", SFPModel: "WSPXG-ES3LC-IHA", Link: 4, TxG: "0x10", RxG: "0x20", TxB: "0x0", RxB: "0x0"},
 		})
 	})
 
 	mux.HandleFunc("/sfp_diag.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]SFPDiagEntry{
-			{Port: 9, Options: 3, Temperature: "0x1a-0x00", VCC: "0x20-0x00", TXBias: "0x30-0x00", TXPower: "0x40-0x00", RXPower: "0x50-0x00", Laser: 1},
+			{PortNum: 9, SFPOptions: "0x43", SFPTemp: "0x1a00", SFPVCC: "0x2000", SFPTXBias: "0x3000", SFPTXPower: "0x4000", SFPRXPower: "0x5000", SFPState: "0x01"},
 		})
 	})
 
 	mux.HandleFunc("/l2.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]L2Entry{
-			{MAC: "AA:BB:CC:DD:EE:01", VLAN: "1", Type: "l", Port: "5", Index: 0},
-			{MAC: "AA:BB:CC:DD:EE:02", VLAN: "1", Type: "l", Port: "7", Index: 1},
-			{MAC: "AA:BB:CC:DD:EE:03", VLAN: "10", Type: "s", Port: "1", Index: 2},
+			{MAC: "AA:BB:CC:DD:EE:01", VLAN: "001", Type: "l", Port: "5", Index: "0000"},
+			{MAC: "AA:BB:CC:DD:EE:02", VLAN: "001", Type: "l", Port: "7", Index: "0001"},
+			{MAC: "AA:BB:CC:DD:EE:03", VLAN: "001", Type: "s", Port: "1", Index: "0002"},
 		})
 	})
 
 	mux.HandleFunc("/eee.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]EEEEntry{
-			{Port: 1, IsSFP: false, Adv2500: true, Adv1000: true, Active: true},
-			{Port: 2, IsSFP: false, Adv1000: true, Adv100: true, Active: false},
+			{PortNum: 1, IsSFP: 0, EEE: "110", EEELP: "010", Active: 1},
+			{PortNum: 2, IsSFP: 0, EEE: "000", EEELP: "000", Active: 0},
 		})
 	})
 
 	mux.HandleFunc("/mtu.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]MTUEntry{
-			{Port: 1, MTU: "0x2400"},
-			{Port: 2, MTU: "0x05DC"},
+			{PortNum: 1, MTU: "0x2400"},
+			{PortNum: 2, MTU: "0x05DC"},
 		})
 	})
 
@@ -93,178 +91,176 @@ func newTestServer() *httptest.Server {
 		})
 	})
 
-	mux.HandleFunc("/bandwidth.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]BandwidthEntry{
-			{Port: 1, IngLimit: 0, EgrLimit: 0},
-		})
-	})
-
 	return httptest.NewServer(mux)
 }
 
-func newAuthenticatedClient(ts *httptest.Server) *Client {
+func newClient(ts *httptest.Server) *Client {
 	jar, _ := cookiejar.New(nil)
-	httpClient := &http.Client{Jar: jar}
-	return NewWithClient(ts.Listener.Addr().String(), httpClient)
+	return NewWithClient(ts.Listener.Addr().String(), &http.Client{Jar: jar})
 }
 
 func TestScrapeInformation(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
 
-	client := newAuthenticatedClient(ts)
-	// Manually login
-	client.login("test")
-
-	info, err := client.ScrapeInformation()
+	info, err := c.ScrapeInformation()
 	if err != nil {
-		t.Fatalf("ScrapeInformation failed: %v", err)
+		t.Fatalf("ScrapeInformation: %v", err)
 	}
-	if info.IP != "192.168.10.247" {
-		t.Fatalf("expected IP 192.168.10.247, got %s", info.IP)
+	if info.IPAddress != "192.168.10.247" {
+		t.Fatalf("IP: got %q", info.IPAddress)
 	}
-	if info.MAC != "AA:BB:CC:DD:EE:FF" {
-		t.Fatalf("expected MAC AA:BB:CC:DD:EE:FF, got %s", info.MAC)
+	if info.MACAddress != "AA:BB:CC:DD:EE:FF" {
+		t.Fatalf("MAC: got %q", info.MACAddress)
 	}
 	if info.Hostname != "test-switch" {
-		t.Fatalf("expected hostname test-switch, got %s", info.Hostname)
+		t.Fatalf("Hostname: got %q", info.Hostname)
+	}
+	if info.SwVer != "v0.1.0" {
+		t.Fatalf("SwVer: got %q", info.SwVer)
+	}
+	if info.TelnetEnabled != "0" || info.WebEnabled != "1" {
+		t.Fatalf("Telnet/Web: got %q/%q", info.TelnetEnabled, info.WebEnabled)
 	}
 }
 
 func TestScrapeStatus(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
 
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	status, err := client.ScrapeStatus()
+	status, err := c.ScrapeStatus()
 	if err != nil {
-		t.Fatalf("ScrapeStatus failed: %v", err)
+		t.Fatalf("ScrapeStatus: %v", err)
 	}
 	if len(status) != 3 {
 		t.Fatalf("expected 3 ports, got %d", len(status))
 	}
 	if status[0].PortNum != 1 {
-		t.Fatalf("expected port 1, got %d", status[0].PortNum)
+		t.Fatalf("portNum: got %d", status[0].PortNum)
 	}
-	if status[0].Link != 4 {
-		t.Fatalf("expected link=4 (10G), got %d", status[0].Link)
+	if status[0].LogPort != 4 {
+		t.Fatalf("logPort: got %d", status[0].LogPort)
 	}
-	if status[2].SFP != "Lightron Inc. WSPXG-ES3LC-IHA" {
-		t.Fatalf("unexpected SFP string: %s", status[2].SFP)
+	if status[2].IsSFP != 1 {
+		t.Fatalf("port 9 should be SFP")
+	}
+	if status[2].SFPVendor != "Lightron Inc." {
+		t.Fatalf("SFP vendor: got %q", status[2].SFPVendor)
 	}
 }
 
 func TestScrapeSFPDiag(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
 
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	diag, err := client.ScrapeSFPDiag()
+	diag, err := c.ScrapeSFPDiag()
 	if err != nil {
-		t.Fatalf("ScrapeSFPDiag failed: %v", err)
+		t.Fatalf("ScrapeSFPDiag: %v", err)
 	}
 	if len(diag) != 1 {
-		t.Fatalf("expected 1 SFP diagnostic entry, got %d", len(diag))
+		t.Fatalf("expected 1 entry, got %d", len(diag))
 	}
-	if diag[0].Port != 9 {
-		t.Fatalf("expected port 9, got %d", diag[0].Port)
+	if diag[0].PortNum != 9 {
+		t.Fatalf("portNum: got %d", diag[0].PortNum)
+	}
+	if diag[0].SFPOptions != "0x43" {
+		t.Fatalf("sfp_options: got %q", diag[0].SFPOptions)
 	}
 }
 
 func TestScrapeMACTable(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
 
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	entries, err := client.ScrapeMACTable(0)
+	entries, err := c.ScrapeMACTable(0)
 	if err != nil {
-		t.Fatalf("ScrapeMACTable failed: %v", err)
+		t.Fatalf("ScrapeMACTable: %v", err)
 	}
 	if len(entries) != 3 {
-		t.Fatalf("expected 3 MAC entries, got %d", len(entries))
+		t.Fatalf("expected 3, got %d", len(entries))
 	}
 	if entries[0].MAC != "AA:BB:CC:DD:EE:01" {
-		t.Fatalf("expected MAC AA:BB:CC:DD:EE:01, got %s", entries[0].MAC)
+		t.Fatalf("MAC: got %q", entries[0].MAC)
 	}
-	if entries[0].Port != "5" {
-		t.Fatalf("expected port 5, got %s", entries[0].Port)
+	if entries[0].VLAN != "001" {
+		t.Fatalf("VLAN: got %q", entries[0].VLAN)
 	}
-}
-
-func TestScrapeEEE(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	eee, err := client.ScrapeEEE()
-	if err != nil {
-		t.Fatalf("ScrapeEEE failed: %v", err)
-	}
-	if len(eee) != 2 {
-		t.Fatalf("expected 2 EEE entries, got %d", len(eee))
-	}
-	if !eee[0].Active {
-		t.Fatal("expected port 1 EEE active")
-	}
-}
-
-func TestScrapeMTU(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	mtu, err := client.ScrapeMTU()
-	if err != nil {
-		t.Fatalf("ScrapeMTU failed: %v", err)
-	}
-	if len(mtu) != 2 {
-		t.Fatalf("expected 2 MTU entries, got %d", len(mtu))
-	}
-}
-
-func TestScrapeVLANList(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	list, err := client.ScrapeVLANList()
-	if err != nil {
-		t.Fatalf("ScrapeVLANList failed: %v", err)
-	}
-	if len(list) != 2 {
-		t.Fatalf("expected 2 VLANs, got %d", len(list))
-	}
-	if list[1].Name != "iot" {
-		t.Fatalf("expected VLAN 10 name 'iot', got %s", list[1].Name)
+	if entries[0].Type != "l" {
+		t.Fatalf("type: got %q", entries[0].Type)
 	}
 }
 
 func TestScrapeAllMACTable(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
 
-	client := newAuthenticatedClient(ts)
-	client.login("test")
-
-	entries, err := client.ScrapeAllMACTable()
+	entries, err := c.ScrapeAllMACTable()
 	if err != nil {
-		t.Fatalf("ScrapeAllMACTable failed: %v", err)
+		t.Fatalf("ScrapeAllMACTable: %v", err)
 	}
 	if len(entries) != 3 {
-		t.Fatalf("expected 3 total MAC entries, got %d", len(entries))
+		t.Fatalf("expected 3, got %d", len(entries))
+	}
+}
+
+func TestScrapeEEE(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
+
+	eee, err := c.ScrapeEEE()
+	if err != nil {
+		t.Fatalf("ScrapeEEE: %v", err)
+	}
+	if len(eee) != 2 {
+		t.Fatalf("expected 2, got %d", len(eee))
+	}
+	if eee[0].Active != 1 {
+		t.Fatal("port 1 EEE should be active")
+	}
+}
+
+func TestScrapeMTU(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
+
+	mtu, err := c.ScrapeMTU()
+	if err != nil {
+		t.Fatalf("ScrapeMTU: %v", err)
+	}
+	if len(mtu) != 2 {
+		t.Fatalf("expected 2, got %d", len(mtu))
+	}
+}
+
+func TestScrapeVLANList(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	c := newClient(ts)
+	c.login("test")
+
+	list, err := c.ScrapeVLANList()
+	if err != nil {
+		t.Fatalf("ScrapeVLANList: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected 2, got %d", len(list))
+	}
+	if list[1].Name != "iot" {
+		t.Fatalf("expected 'iot', got %q", list[1].Name)
 	}
 }
 
@@ -278,6 +274,26 @@ func TestLoginFailure(t *testing.T) {
 
 	_, err := New(ts.Listener.Addr().String(), "wrong")
 	if err == nil {
-		t.Fatal("expected login failure, got nil")
+		t.Fatal("expected login failure")
+	}
+}
+
+func TestParseHexIndex(t *testing.T) {
+	tests := []struct {
+		s    string
+		want int
+	}{
+		{"0000", 0},
+		{"0001", 1},
+		{"0012", 18},
+		{"00ff", 255},
+		{"0100", 256},
+		{"0abc", 2748},
+	}
+	for _, tc := range tests {
+		got := parseHexIndex(tc.s)
+		if got != tc.want {
+			t.Errorf("parseHexIndex(%q) = %d, want %d", tc.s, got, tc.want)
+		}
 	}
 }

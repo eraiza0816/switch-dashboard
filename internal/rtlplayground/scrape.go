@@ -3,6 +3,7 @@ package rtlplayground
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 func (c *Client) ScrapeInformation() (*Information, error) {
@@ -164,16 +165,15 @@ func (c *Client) DeleteL2Entry(idx int) error {
 	return nil
 }
 
-func (c *Client) ScrapeCounters(port int) ([]CounterEntry, error) {
-	data, err := c.get(fmt.Sprintf("/counters.json?port=%d", port))
+func parseHexIndex(s string) int {
+	if len(s) < 4 {
+		return 0
+	}
+	v, err := strconv.ParseInt(s, 16, 32)
 	if err != nil {
-		return nil, err
+		return 0
 	}
-	var counters []CounterEntry
-	if err := json.Unmarshal(data, &counters); err != nil {
-		return nil, fmt.Errorf("counters.json unmarshal: %w", err)
-	}
-	return counters, nil
+	return int(v)
 }
 
 func (c *Client) ScrapeAllMACTable() ([]L2Entry, error) {
@@ -189,7 +189,7 @@ func (c *Client) ScrapeAllMACTable() ([]L2Entry, error) {
 		}
 		all = append(all, entries...)
 		last := entries[len(entries)-1]
-		idx = last.Index + 1
+		idx = parseHexIndex(last.Index) + 1
 		if len(entries) < 30 {
 			break
 		}
