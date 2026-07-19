@@ -87,7 +87,14 @@ func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
 	// Fall back to disk
 	dir := "templates"
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return template.Must(template.New("empty").Funcs(funcs).Parse(`<!DOCTYPE html><html><body>placeholder</body></html>`))
+		placeholder := `<!DOCTYPE html><html><body>{{ .Title }}</body></html>`
+		t := template.New("index.html").Funcs(funcs)
+		template.Must(t.Parse(placeholder))
+		template.Must(t.New("config.html").Parse(placeholder))
+		template.Must(t.New("backups.html").Parse(placeholder))
+		template.Must(t.New("logs.html").Parse(placeholder))
+		template.Must(t.New("api_docs.html").Parse(placeholder))
+		return t
 	}
 	glob := filepath.Join(dir, "*.html")
 	return template.Must(template.New("").Funcs(funcs).ParseGlob(glob))
