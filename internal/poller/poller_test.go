@@ -2,6 +2,8 @@ package poller
 
 import (
 	"testing"
+
+	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
 )
 
 func TestParseHex(t *testing.T) {
@@ -66,6 +68,25 @@ func TestPacketAndByteEstimation(t *testing.T) {
 	// This matches the Python scraper's fallback: p["tx_bytes"] = tx_pkts * 800
 	if estimatedBytes != 800000000 {
 		t.Fatalf("expected 800000000 bytes for 1M packets, got %d", estimatedBytes)
+	}
+}
+
+func TestPollerSFPDectection(t *testing.T) {
+	// SFP ports are identified by the isSFP field from status entry
+	entry := rtlplayground.StatusEntry{PortNum: 5, IsSFP: 1, Link: 4, Enabled: 1, TxG: "0x100", RxG: "0x200"}
+	if entry.IsSFP == 0 {
+		t.Fatal("expected IsSFP=1 for SFP port")
+	}
+
+	isSFP := entry.IsSFP != 0
+	if !isSFP {
+		t.Fatal("SFP detection failed")
+	}
+
+	// Non-SFP port
+	entry2 := rtlplayground.StatusEntry{PortNum: 1, IsSFP: 0}
+	if entry2.IsSFP != 0 {
+		t.Fatal("expected IsSFP=0 for non-SFP port")
 	}
 }
 

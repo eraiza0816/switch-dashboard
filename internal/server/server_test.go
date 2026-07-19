@@ -290,6 +290,36 @@ func TestConfigSave(t *testing.T) {
 	}
 }
 
+func TestSFPHandler(t *testing.T) {
+	s := newTestServer()
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/switches/192.168.1.1/transceiver", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var data map[string]any
+	json.Unmarshal(w.Body.Bytes(), &data)
+	if data["vendor_name"] == nil {
+		t.Fatal("expected vendor_name in transceiver response")
+	}
+}
+
+func TestCmdEndpoint(t *testing.T) {
+	s := newTestServer()
+	body := strings.NewReader(`{"cmd":"show"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/cmd", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var data map[string]any
+	json.Unmarshal(w.Body.Bytes(), &data)
+	if data["status"] != "ok" {
+		t.Fatalf("expected status ok, got %v", data["status"])
+	}
+}
+
 func TestHTMLPages(t *testing.T) {
 	s := newTestServer()
 	for _, path := range []string{"/", "/logs", "/backups", "/config", "/api-docs"} {

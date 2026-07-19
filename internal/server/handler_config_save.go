@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
 )
 
 type saveConfigData struct {
@@ -123,5 +125,172 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Try to connect to each real switch in the background
+	for _, sw := range cfg.Switches {
+		sw := sw
+		go func() {
+			password := ""
+			for i, s := range cfg.Switches {
+				if s.IP == sw.IP && i < len(passwords) {
+					password = passwords[i]
+					break
+				}
+			}
+			client, err := newRTLClient(sw.IP, password)
+			if err != nil {
+				s.Logger.Info("switch not reachable, keeping mock data", "ip", sw.IP)
+				return
+			}
+			info, err := client.ScrapeInformation()
+			if err != nil {
+				return
+			}
+			s.Logger.Info("connected to switch, updating live data", "ip", sw.IP, "model", info.HWVer)
+			doPoll(client, s.Cache, sw.IP, sw.Name, sw.Model, s.Logger)
+		}()
+	}
+
 	http.Redirect(w, r, fmt.Sprintf("/config?saved=1&lang=%s", r.FormValue("lang")), http.StatusFound)
+}
+
+func newRTLClient(ip, password string) (*rtlplayground.Client, error) {
+	return rtlplayground.New(ip, password)
+}
+
+func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, logger Logger) {
+	status, err := client.ScrapeStatus()
+	if err != nil {
+		logger.Error("poll failed", "ip", ip, "error", err)
+		return
+	}
+	info, _ := client.ScrapeInformation()
+	sfpDiag, _ := client.ScrapeSFPDiag()
+	macTable, _ := client.ScrapeAllMACTable()
+	eee, _ := client.ScrapeEEE()
+	vlanList, _ := client.ScrapeVLANList()
+	lag, _ := client.ScrapeLAG()
+	mirror, _ := client.ScrapeMirror()
+	bw, _ := client.ScrapeBandwidth()
+	mtu, _ := client.ScrapeMTU()
+
+	ports := make([]PortState, 0, len(status))
+	for _, entry := range status {
+		txPackets := parseHexVal(entry.TxG)
+		rxPackets := parseHexVal(entry.RxG)
+		txBytes := txPackets * 800
+		rxBytes := rxPackets * 800
+
+		statusStr := "down"
+		linkStr := "Link Down"
+		duplex := ""
+		if entry.Link > 0 && entry.Enabled != 0 {
+			statusStr = "up"
+			linkStr = "Link Up"
+			duplex = "Full"
+		}
+		if entry.Enabled == 0 {
+			statusStr = "disable"
+			linkStr = "Disabled"
+		}
+
+		speedStr := linkSpeedFromInt(entry.Link)
+		ports = append(ports, PortState{
+			Port:      fmt.Sprintf("%d", entry.PortNum),
+			Status:    statusStr,
+			Link:      linkStr,
+			Speed:     speedStr,
+			Duplex:    duplex,
+			TXBytes:   txBytes,
+			RXBytes:   rxBytes,
+			TXPackets: txPackets,
+			RXPackets: rxPackets,
+			IsSFP:     entry.IsSFP != 0,
+			SFPVendor: entry.SFPVendor,
+			SFPModel:  entry.SFPModel,
+		})
+	}
+
+	macEntries := make([]MACEntry, 0, len(macTable))
+	for _, entry := range macTable {
+		macEntries = append(macEntries, MACEntry{
+			MAC:  entry.MAC,
+			Type: entry.Type,
+			Port: entry.PortStr(),
+			VLAN: entry.VLAN,
+		})
+	}
+
+	jumbo := JumboFrameStatus{Enabled: false, Size: "Disabled"}
+	if len(mtu) > 0 {
+		for _, m := range mtu {
+			if m.PortNum > 0 {
+				jumbo.Enabled = true
+				jumbo.Size = m.MTU
+				break
+			}
+		}
+	}
+
+	swData := &SwitchData{
+		Name:     name,
+		IP:       ip,
+		Model:    model,
+		Status:   "online",
+		Ports:    ports,
+		MACTable: macEntries,
+		DHCP:     SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
+		IGMP:     IGMPStatus{Enabled: false},
+		Jumbo:    jumbo,
+	}
+	if info != nil {
+		swData.MAC = info.MACAddress
+		swData.Firmware = info.SwVer
+		swData.Hostname = info.Hostname
+	}
+	_ = sfpDiag
+	_ = eee
+	_ = vlanList
+	_ = lag
+	_ = mirror
+	_ = bw
+
+	cache.UpdateSwitch(ip, swData)
+}
+
+func parseHexVal(s string) int64 {
+	if len(s) < 3 || s[:2] != "0x" {
+		return 0
+	}
+	var v int64
+	for _, c := range s[2:] {
+		v <<= 4
+		switch {
+		case c >= '0' && c <= '9':
+			v |= int64(c - '0')
+		case c >= 'a' && c <= 'f':
+			v |= int64(c - 'a' + 10)
+		case c >= 'A' && c <= 'F':
+			v |= int64(c - 'A' + 10)
+		default:
+			return 0
+		}
+	}
+	return v
+}
+
+func linkSpeedFromInt(link int) string {
+	switch link {
+	case 0:
+		return ""
+	case 1:
+		return "100M"
+	case 2:
+		return "1G"
+	case 3:
+		return "2.5G"
+	case 4:
+		return "10G"
+	default:
+		return "Auto"
+	}
 }

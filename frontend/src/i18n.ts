@@ -262,6 +262,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
 function getBrowserLang(): Lang {
   try {
+    if (typeof navigator === 'undefined') return 'en';
     const lang = (navigator.language || '').slice(0, 2);
     if (lang === 'ja') return 'ja';
   } catch {}
@@ -270,6 +271,7 @@ function getBrowserLang(): Lang {
 
 function loadLang(): Lang {
   try {
+    if (typeof localStorage === 'undefined') return getBrowserLang();
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'ja' || stored === 'en') return stored;
   } catch {}
@@ -284,9 +286,8 @@ export function getLang(): Lang {
 
 export function setLang(lang: Lang) {
   currentLang = lang;
-  try { localStorage.setItem(STORAGE_KEY, lang); } catch {}
-  document.documentElement.lang = lang;
-  // Re-render UI
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, lang); } catch {}
+  if (typeof document !== 'undefined') document.documentElement.lang = lang;
   updateUILang();
 }
 
@@ -302,7 +303,7 @@ export function t(key: string, params?: Record<string, string | number>): string
 }
 
 function updateUILang() {
-  // Update nav links
+  if (typeof document === 'undefined') return;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (key) el.textContent = t(key);
@@ -318,7 +319,9 @@ function updateUILang() {
   document.title = t('nav.dashboard');
 }
 
-// Run on load
-document.addEventListener('DOMContentLoaded', () => {
-  setLang(currentLang);
-});
+// Run on load (skip in test environments)
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setLang(currentLang);
+  });
+}
