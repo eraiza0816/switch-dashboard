@@ -89,7 +89,10 @@ func main() {
 		}()
 	}
 
-	addr := ":8080"
+	addr := os.Getenv("LISTEN")
+	if addr == "" {
+		addr = ":8081"
+	}
 	logger.Info("starting server", "addr", addr)
 	if err := http.ListenAndServe(addr, srv.Router); err != nil {
 		logger.Error("server failed", "error", err)

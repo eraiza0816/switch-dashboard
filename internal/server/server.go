@@ -128,6 +128,8 @@ func (s *Server) registerRoutes() {
 		r.Get("/vendors", s.handleAPIGetVendors)
 		r.Post("/vendors", s.handleAPISaveVendors)
 		r.Post("/vendors/update_oui", s.handleAPIUpdateOUI)
+
+		r.Get("/openapi.json", s.handleOpenAPI)
 	})
 
 	s.Router.Route("/api/backups", func(r chi.Router) {

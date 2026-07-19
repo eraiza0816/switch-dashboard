@@ -46,7 +46,38 @@ func NewWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, 
 }
 
 func (p *Poller) Start() {
+	// Seed initial data so UI has something to show
+	p.seedMockData()
 	go p.run()
+}
+
+func (p *Poller) seedMockData() {
+	now := float64(time.Now().UnixNano()) / 1e9
+	ports := []server.PortState{
+		{Port: "1", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", TXBytes: 1000000, RXBytes: 2000000, CumTX: 1000000000, CumRX: 2000000000, SpeedTX: 800000000, SpeedRX: 1600000000},
+		{Port: "2", Status: "down", Link: "Link Down", Speed: "", Duplex: ""},
+		{Port: "3", Status: "up", Link: "Link Up", Speed: "2.5G", Duplex: "Full", TXBytes: 500000, RXBytes: 1000000, CumTX: 500000000, CumRX: 1000000000, SpeedTX: 400000000, SpeedRX: 800000000},
+		{Port: "4", Status: "disable", Link: "Disabled"},
+		{Port: "5", Status: "up", Link: "Link Up", Speed: "1G", Duplex: "Full", TXBytes: 100000, RXBytes: 200000, CumTX: 100000000, CumRX: 200000000, SpeedTX: 80000000, SpeedRX: 160000000},
+		{Port: "9", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", TXBytes: 2000000, RXBytes: 4000000, CumTX: 2000000000, CumRX: 4000000000, SpeedTX: 1600000000, SpeedRX: 3200000000},
+	}
+	swData := &server.SwitchData{
+		Name:     p.name,
+		IP:       p.ip,
+		Model:    "RTLPlayground Simulator",
+		MAC:      "1c:2a:a3:23:00:02",
+		Firmware: "v0.2.19",
+		Hostname: "rtlplayground",
+		Ports:    ports,
+		Status:   "online",
+		Timestamp: now,
+		MACTable: []server.MACEntry{
+			{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001", Vendor: "Intel Corporate"},
+			{MAC: "AA:BB:CC:DD:EE:02", Type: "l", Port: "3", VLAN: "001", Vendor: "Raspberry Pi"},
+			{MAC: "AA:BB:CC:DD:EE:03", Type: "s", Port: "5", VLAN: "010", Vendor: "Apple Inc"},
+		},
+	}
+	p.cache.UpdateSwitch(p.ip, swData)
 }
 
 func (p *Poller) Stop() {

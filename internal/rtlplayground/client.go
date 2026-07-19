@@ -7,6 +7,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Client struct {
@@ -20,8 +21,11 @@ func New(ip, password string) (*Client, error) {
 		return nil, fmt.Errorf("cookiejar: %w", err)
 	}
 	c := &Client{
-		httpClient: &http.Client{Jar: jar},
-		baseURL:    fmt.Sprintf("http://%s", ip),
+		httpClient: &http.Client{
+			Jar:     jar,
+			Timeout: 5 * time.Second,
+		},
+		baseURL: fmt.Sprintf("http://%s", ip),
 	}
 	if err := c.login(password); err != nil {
 		return nil, fmt.Errorf("login: %w", err)
