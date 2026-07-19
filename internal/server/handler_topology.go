@@ -22,14 +22,12 @@ func (s *Server) handleAPITopology(w http.ResponseWriter, r *http.Request) {
 			Status: sw.Status,
 		})
 
-		swMAC := normalizeMAC(sw.MAC)
-
 		for _, entry := range sw.MACTable {
 			mac := entry.MAC
 			normMAC := normalizeMAC(mac)
 
-			// Skip CPU port (port 9 on RTL8372/3) and switch's own MAC
-			if entry.Port == "9" || normMAC == swMAC || seenMAC[normMAC] {
+			// Skip CPU port (port 9 on RTL8372/3) and duplicate MACs
+			if entry.Port == "9" || seenMAC[normMAC] {
 				continue
 			}
 			seenMAC[normMAC] = true
