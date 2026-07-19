@@ -11,10 +11,10 @@ var H=document.createElement("style");H.innerText=`
         <td class="file-size">${v.size_str}</td>
         <td style="white-space: nowrap;">
           <a class="btn-action btn-download" href="/api/backups/${v.filename}/download" title="Download backup file">
-            <span style="font-size: 13px;">⬇️</span> Download
+            Download
           </a>
           <button class="btn-action btn-delete" onclick="confirmDelete('${v.filename}', this)" title="Delete backup file">
-            <span style="font-size: 13px;">\uD83D\uDDD1️</span> Delete
+            Delete
           </button>
         </td>
       </tr>
@@ -37,9 +37,9 @@ var H=document.createElement("style");H.innerText=`
     </div>
   `}function Q(){let x=document.getElementById("table-wrapper");x.innerHTML=`
     <div class="empty-state">
-      <div class="empty-icon">\uD83D\uDCC2</div>
+      <div class="empty-icon" style="font-size:24px;color:#30363d;">-</div>
       <h3>No backups archived</h3>
-      <p>Configure your switches in the settings and press the "\uD83D\uDCBE Backup" action next to any switch IP in the main dashboard to store automated binary backups here.</p>
+      <p>Configure your switches in the settings and press the "Backup" action next to any switch IP in the main dashboard to store automated binary backups here.</p>
       <a href="/" style="margin-top: 8px;">&larr; Go to Dashboard</a>
     </div>
   `}function F(x){let q=document.getElementById("table-wrapper");q.innerHTML=`
@@ -48,7 +48,7 @@ var H=document.createElement("style");H.innerText=`
       <h3>System Error</h3>
       <p>${x}</p>
       <button onclick="loadBackups()" class="btn-action btn-download" style="margin-top: 14px; padding: 10px 20px;">
-        \uD83D\uDD04 Retry Connection
+        Retry Connection
       </button>
     </div>
-  `}function G(x){R(x,"error","⚠️")}function R(x,q,z){let v=document.getElementById("toast-box"),J=document.getElementById("toast-icon"),L=document.getElementById("toast-message");v.className=`toast ${q}`,J.textContent=z,L.textContent=x,v.classList.add("show"),setTimeout(()=>{v.classList.remove("show")},4000)}
+  `}function G(x){R(x,"error")}function R(x,q,z){let v=document.getElementById("toast-box"),J=document.getElementById("toast-icon"),L=document.getElementById("toast-message");v.className=`toast ${q}`,J.textContent=z,L.textContent=x,v.classList.add("show"),setTimeout(()=>{v.classList.remove("show")},4000)}

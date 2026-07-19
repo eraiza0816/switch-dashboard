@@ -56,10 +56,10 @@ function stopPolling() {
 function toggleAutoRefresh() {
   if (isPollingActive) {
     stopPolling();
-    showToast("Auto-refresh paused", "success", "⏸️");
+    showToast("Auto-refresh paused", "success");
   } else {
     startPolling();
-    showToast("Auto-refresh resumed", "success", "▶️");
+    showToast("Auto-refresh resumed", "success");
   }
 }
 
@@ -212,7 +212,7 @@ async function updateLogLevel(level) {
     const data = await res.json();
     
     if (res.ok && data.status === "ok") {
-      showToast(`Log level dynamically changed to ${level}`, "success", "⚙️");
+      showToast(`Log level dynamically changed to ${level}`, "success");
       // Fetch logs immediately to display the server confirmation log
       setTimeout(fetchLogs, 400);
     } else {
@@ -233,7 +233,7 @@ async function clearLogs() {
     const data = await res.json();
     
     if (res.ok && data.status === "ok") {
-      showToast("Logs successfully cleared on server", "success", "🗑️");
+      showToast("Logs successfully cleared on server", "success");
       lastRenderedLines = [];
       document.getElementById("logs-container").innerHTML = "";
       document.getElementById("empty-state").style.display = "flex";
@@ -251,7 +251,7 @@ function resumeAutoscrollClick() {
   document.getElementById("autoscroll-banner").style.display = "none";
   const consoleScreen = document.getElementById("console-screen");
   consoleScreen.scrollTop = consoleScreen.scrollHeight;
-  showToast("Auto-scroll resumed", "success", "⬇️");
+  showToast("Auto-scroll resumed", "success");
 }
 
 // Helpers
@@ -265,11 +265,11 @@ function escapeHtml(unsafe) {
 }
 
 function showSuccessToast(message) {
-  showToast(message, "success", "✓");
+  showToast(message, "success");
 }
 
 function showErrorToast(message) {
-  showToast(message, "error", "⚠️");
+  showToast(message, "error");
 }
 
 function showToast(message, type, icon) {

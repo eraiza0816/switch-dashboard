@@ -51,10 +51,10 @@ function renderTable(backups) {
         <td class="file-size">${b.size_str}</td>
         <td style="white-space: nowrap;">
           <a class="btn-action btn-download" href="/api/backups/${b.filename}/download" title="Download backup file">
-            <span style="font-size: 13px;">⬇️</span> Download
+            Download
           </a>
           <button class="btn-action btn-delete" onclick="confirmDelete('${b.filename}', this)" title="Delete backup file">
-            <span style="font-size: 13px;">🗑️</span> Delete
+            Delete
           </button>
         </td>
       </tr>
@@ -85,9 +85,9 @@ function renderEmptyState() {
   const wrapper = document.getElementById("table-wrapper");
   wrapper.innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">📂</div>
+      <div class="empty-icon" style="font-size:24px;color:#30363d;">-</div>
       <h3>No backups archived</h3>
-      <p>Configure your switches in the settings and press the "💾 Backup" action next to any switch IP in the main dashboard to store automated binary backups here.</p>
+      <p>Configure your switches in the settings and press the "Backup" action next to any switch IP in the main dashboard to store automated binary backups here.</p>
       <a href="/" style="margin-top: 8px;">&larr; Go to Dashboard</a>
     </div>
   `;
@@ -101,7 +101,7 @@ function renderErrorState(msg) {
       <h3>System Error</h3>
       <p>${msg}</p>
       <button onclick="loadBackups()" class="btn-action btn-download" style="margin-top: 14px; padding: 10px 20px;">
-        🔄 Retry Connection
+        Retry Connection
       </button>
     </div>
   `;
@@ -163,11 +163,11 @@ async function executeDelete() {
 
 // Toast Notifications helper
 function showSuccessToast(message) {
-  showToast(message, "success", "✓");
+  showToast(message, "success");
 }
 
 function showErrorToast(message) {
-  showToast(message, "error", "⚠️");
+  showToast(message, "error");
 }
 
 function showToast(message, type, icon) {

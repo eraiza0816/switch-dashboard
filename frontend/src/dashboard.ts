@@ -584,17 +584,17 @@ function backupConfig(ip, element) {
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
-        element.innerHTML = '✓ Backed up!';
+        element.innerHTML = 'Backed up!';
         element.style.color = '#3fb950';
       } else {
         alert('Failed to backup config: ' + (data.error || 'Unknown error'));
-        element.innerHTML = '❌ Failed';
+        element.innerHTML = 'Failed';
         element.style.color = '#ff7b72';
       }
     })
     .catch(err => {
       alert('Error during backup: ' + err.message);
-      element.innerHTML = '❌ Failed';
+      element.innerHTML = 'Failed';
       element.style.color = '#ff7b72';
     })
     .finally(() => {
@@ -952,7 +952,7 @@ function renderSwitch(sw) {
       <div class="mac-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleMacTable('${sw.ip}')">
         <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
           <span class="mac-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${arrowTransform}; font-size: 10px;">&gt;</span>
-          <span>📁 MAC Address Table (<span class="mac-count-${sw.ip}">${macCount} entries</span>)</span>
+          <span>MAC Address Table (<span class="mac-count-${sw.ip}">${macCount} entries</span>)</span>
         </h4>
         <span class="mac-time-${sw.ip}" style="font-size: 10px; color: #8b949e;">Last Scraped: ${lastScrapedStr}</span>
       </div>
@@ -1016,7 +1016,7 @@ function renderSwitch(sw) {
       <div class="igmp-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleIgmpTable('${sw.ip}')">
         <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
           <span class="igmp-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${igmpArrowTransform}; font-size: 10px;">&gt;</span>
-          <span>📁 IGMP Multicast Groups (<span class="igmp-count-${sw.ip}">${igmpCount} entries</span>)</span>
+          <span>IGMP Multicast Groups (<span class="igmp-count-${sw.ip}">${igmpCount} entries</span>)</span>
         </h4>
       </div>
       

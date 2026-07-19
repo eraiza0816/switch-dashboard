@@ -128,21 +128,16 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 	// Try to connect to each real switch in the background
 	for _, sw := range cfg.Switches {
 		sw := sw
+		s.Logger.Info("attempting background connection", "ip", sw.IP)
 		go func() {
-			password := ""
-			for i, s := range cfg.Switches {
-				if s.IP == sw.IP && i < len(passwords) {
-					password = passwords[i]
-					break
-				}
-			}
-			client, err := newRTLClient(sw.IP, password)
+			client, err := newRTLClient(sw.IP, sw.Password)
 			if err != nil {
-				s.Logger.Info("switch not reachable, keeping mock data", "ip", sw.IP)
+				s.Logger.Info("switch not reachable, keeping mock data", "ip", sw.IP, "error", err.Error())
 				return
 			}
 			info, err := client.ScrapeInformation()
 			if err != nil {
+				s.Logger.Warn("initial scrape failed", "ip", sw.IP, "error", err.Error())
 				return
 			}
 			s.Logger.Info("connected to switch, updating live data", "ip", sw.IP, "model", info.HWVer)
