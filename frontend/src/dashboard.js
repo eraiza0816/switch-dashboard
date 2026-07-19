@@ -1024,7 +1024,7 @@ function renderSwitch(sw) {
   return `<div class="switch-card">
     <div class="switch-header">
       <div style="display: flex; align-items: center; gap: 12px;">
-        <img src="/api/switches/${sw.ip}/image" alt="Switch" style="height: 24px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+        <img src="/static/logo.png" alt="Switch" style="height: 24px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
         <div>
           <h2>${sw.name}</h2>
           <span style="font-size:12px;color:#b1bac4;display:flex;align-items:center;gap:8px;">
@@ -1651,4 +1651,11 @@ window.addEventListener('resize', () => {
 });
 window.setFontSize = setFontSize;
 window.doReset = doReset;
-window.setFontSize
+window.backupConfig = backupConfig;
+window.manualRefreshMac = manualRefreshMac;
+window.openGraph = openGraph;
+window.openTransceiver = openTransceiver;
+window.sortMac = sortMac;
+window.toggleIgmpTable = toggleIgmpTable;
+window.toggleMacTable = toggleMacTable;
+window.toggleSpeedUnit = toggleSpeedUnit;
