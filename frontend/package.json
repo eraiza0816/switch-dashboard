@@ -1,0 +1,13 @@
+{
+  "name": "switch-dashboard-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts --outdir ../static/dist --target browser --minify --splitting",
+    "watch": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts --outdir ../static/dist --target browser --watch",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
