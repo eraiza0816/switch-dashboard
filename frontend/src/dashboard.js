@@ -1675,6 +1675,7 @@ window.sortMac = sortMac;
 window.toggleIgmpTable = toggleIgmpTable;
 window.toggleMacTable = toggleMacTable;
 window.toggleSpeedUnit = toggleSpeedUnit;
+window.switchConsole = switchConsole;
 window.pausePolling = pausePolling;
 window.saveNote = saveNote;
 window.saveHost = saveHost;

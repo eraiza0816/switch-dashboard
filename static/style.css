@@ -57,6 +57,8 @@ a:hover { text-decoration: underline; }
 
 .speed-link { color: #58a6ff; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
 .speed-link:hover { color: #79c0ff; }
+.sfp-speed-link { color: #58a6ff; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+.sfp-speed-link:hover { color: #79c0ff; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); z-index: 1000; justify-content: center; align-items: center; }
 .modal-overlay.active { display: flex; }
