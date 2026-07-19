@@ -94,6 +94,7 @@ func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
 		template.Must(t.New("backups.html").Parse(placeholder))
 		template.Must(t.New("logs.html").Parse(placeholder))
 		template.Must(t.New("api_docs.html").Parse(placeholder))
+		template.Must(t.New("map.html").Parse(placeholder))
 		return t
 	}
 	glob := filepath.Join(dir, "*.html")
@@ -103,6 +104,7 @@ func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
 func (s *Server) registerRoutes() {
 	s.Router.Get("/", s.handleDashboard)
 	s.Router.Get("/config", s.handleConfig)
+	s.Router.Get("/map", s.handleMap)
 	s.Router.Get("/backups", s.handleBackups)
 	s.Router.Get("/logs", s.handleLogs)
 	s.Router.Get("/api-docs", s.handleAPIDocs)

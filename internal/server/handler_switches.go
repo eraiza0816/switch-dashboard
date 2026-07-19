@@ -105,3 +105,11 @@ func (s *Server) handleAPIDocs(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "api_docs.html", data)
 }
 
+func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
+	data := PageData{
+		Title:   s.Config.Title(),
+		Version: Version,
+	}
+	s.renderTemplate(w, "map.html", data)
+}
+
