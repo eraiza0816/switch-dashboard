@@ -4,63 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ .Title }} - Settings</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#128252;</text></svg>">
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0d1117; color: #c9d1d9; font-family: 'Outfit','Inter',sans-serif; padding: 20px; }
-.container { max-width: 800px; margin: 0 auto; }
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 12px 20px; background: rgba(22,27,34,0.8); border: 1px solid #30363d; border-radius: 12px; }
-.header h1 { font-size: 18px; font-weight: 600; color: #f0f6fc; }
-.card { background: rgba(22,27,34,0.6); border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-.card h2 { font-size: 14px; font-weight: 600; color: #f0f6fc; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
-label { display: block; font-size: 12px; font-weight: 500; color: #8b949e; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-input[type=text], input[type=password], input[type=number] { width: 100%; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #c9d1d9; font-size: 14px; outline: none; }
-input:focus { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,0.15); }
-.form-row { display: flex; gap: 12px; }
-.form-row > * { flex: 1; }
-.switch-group { background: rgba(13,17,23,0.4); border: 1px solid #21262d; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
-.switch-group h3 { font-size: 13px; color: #f0f6fc; margin-bottom: 8px; }
-.btn { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-.btn-primary { background: linear-gradient(135deg,#238636,#2ea043); color: #fff; }
-.btn-primary:hover { opacity: 0.9; }
-.btn-danger { background: #da3633; color: #fff; }
-.btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
-.footer { text-align: center; padding: 20px; color: #8b949e; font-size: 12px; }
-.footer a { color: #58a6ff; text-decoration: none; }
-.success-msg { padding: 12px; background: rgba(35,134,54,0.15); border: 1px solid #238636; border-radius: 8px; color: #3fb950; margin-bottom: 16px; font-size: 13px; }
-</style>
+<link rel="icon" href="/static/logo.png" type="image/png">
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
 <div class="header">
-<h1>{{ .Title }} - Settings</h1>
-<a href="/" style="color:#58a6ff;text-decoration:none;font-size:13px;">&larr; Dashboard</a>
+  <h1>{{ .Title }} - Settings</h1>
+  <div class="nav-links">
+    <a href="/">Dashboard</a>
+    <a href="/map">Map</a>
+    <a href="/config" class="active">Config</a>
+    <a href="/backups">Backups</a>
+    <a href="/logs">Logs</a>
+  </div>
 </div>
 
+<div class="container">
 {{ if .Saved }}
 <div class="success-msg">&#10003; Configuration saved.</div>
 {{ end }}
 
 <form id="config-form" method="POST" action="/config">
-<div class="card">
+<div class="card-full">
 <h2>General</h2>
 <label>Dashboard Title</label>
 <input type="text" name="title" value="{{ .Title }}">
-
-<div class="form-row">
-<div>
+<div style="display:flex;gap:12px;">
+<div style="flex:1;">
 <label>Refresh Interval (seconds)</label>
 <input type="number" name="refresh_interval" value="{{ .Refresh }}" min="1" max="300">
 </div>
 </div>
 </div>
 
-<div class="card">
-<h2>RTLPlayground Switches</h2>
+<div class="card-full">
+<h2>Switches</h2>
 <div id="switch-list">
 {{ range $i, $sw := .Switches }}
 <div class="switch-group" data-index="{{ $i }}">
-<h3>Node {{ add $i 1 }} <span class="switch-subname" id="subname-{{ $i }}">{{ $sw.Name }}</span></h3>
+<h3>Node {{ add $i 1 }} - {{ $sw.Name }}</h3>
 <input type="hidden" name="keep[]" value="1">
 <div class="form-row">
 <div>
@@ -79,7 +61,7 @@ input:focus { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,0.15)
 </div>
 <div>
 <label>Model</label>
-<input type="text" name="model[]" value="{{ $sw.Model }}" placeholder="RTLPlayground" readonly style="color:#8b949e;">
+<input type="text" name="model[]" value="{{ $sw.Model }}" readonly style="color:#8b949e;">
 </div>
 </div>
 </div>
@@ -93,7 +75,7 @@ input:focus { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,0.15)
 </form>
 
 <div class="footer">
-<a href="/">Back to Dashboard</a> &middot; <a href="/api-docs">API Reference</a> &middot; <span class="version-badge">v{{ .Version }}</span>
+<a href="/">Dashboard</a> &middot; <a href="/api-docs">API</a> &middot; <span class="version-badge">v{{ .Version }}</span>
 </div>
 </div>
 </body>
