@@ -46,7 +46,7 @@
     <h3 style="font-size:15px;color:#f0f6fc;margin-bottom:6px;">No logs yet</h3>
     <p style="font-size:13px;">Logs will appear here as the server runs.</p>
   </div>
-  <div id="autoscroll-banner" style="display:none;text-align:center;cursor:pointer;padding:6px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:8px;font-size:11px;color:#58a6ff;margin-top:8px;" onclick="resumeAutoscroll()">Auto-scroll paused - click to resume</div>
+  <div id="autoscroll-banner" style="display:none;text-align:center;cursor:pointer;padding:6px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:8px;font-size:11px;color:#58a6ff;margin-top:8px;" onclick="resumeAutoscrollClick()">Auto-scroll paused - click to resume</div>
 </div>
 
 <div id="toast-box" class="toast-container" style="display:none;">
@@ -61,7 +61,8 @@ function updateLogLevel(level) {
 function clearLogs() {
   fetch('/api/logs/clear',{method:'POST'}).then(r=>r.json()).then(()=>window.location.reload());
 }
-function resumeAutoscroll() { document.getElementById('autoscroll-banner').style.display='none'; }
+function resumeAutoscrollClick() { document.getElementById('autoscroll-banner').style.display='none'; window.resumeAutoscrollClick = resumeAutoscrollClick; }
+function resumeAutoscroll() { resumeAutoscrollClick(); }
 </script>
 <script src="/static/dist/logs.js"></script>
 </body>

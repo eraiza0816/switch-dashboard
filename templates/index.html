@@ -36,43 +36,64 @@
   </div>
 </div>
 
-<div class="dashboard-grid" id="dashboard-grid"></div>
+<div class="dashboard-grid" id="app"></div>
 
-<div class="modal-overlay" id="graph-modal">
-  <div class="modal">
-    <h3 id="graph-title">Bandwidth</h3>
+<div class="modal-overlay" id="graph-overlay">
+  <div class="modal" id="graph-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 id="graph-title">Bandwidth</h3>
+      <button id="graph-maximize-btn" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;" title="Toggle maximize">+</button>
+    </div>
     <div class="graph-tabs" id="graph-tabs">
-      <button class="graph-tab active" data-range="live">Live</button>
-      <button class="graph-tab" data-range="1h">1 Hour</button>
-      <button class="graph-tab" data-range="24h">24 Hours</button>
+      <button class="graph-tab active" id="tab-live" data-range="live">Live</button>
+      <button class="graph-tab" id="tab-1h" data-range="1h">1 Hour</button>
+      <button class="graph-tab" id="tab-24h" data-range="24h">24 Hours</button>
     </div>
     <div class="graph-container" id="graph-container">
-      <svg width="100%" height="200" id="graph-svg"><rect width="100%" height="100%" fill="#0d1117" rx="8"/></svg>
+      <svg width="100%" height="200" id="graph-svg">
+        <rect width="100%" height="100%" fill="#0d1117" rx="8"/>
+        <rect id="hover-overlay-rect" width="100%" height="100%" fill="transparent" style="pointer-events:none"/>
+        <line id="hover-line" x1="0" y1="0" x2="0" y2="200" stroke="#58a6ff" stroke-width="1" style="display:none"/>
+        <circle id="hover-dot-tx" r="4" fill="#58a6ff" style="display:none"/>
+        <circle id="hover-dot-rx" r="4" fill="#3fb950" style="display:none"/>
+      </svg>
     </div>
-    <div class="graph-stats" id="graph-stats"></div>
-    <p style="margin-top:12px;font-size:11px;color:#8b949e;" id="graph-footer"></p>
+    <div id="graph-tooltip" style="display:none;position:absolute;background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;z-index:10;"></div>
+    <div class="graph-stats" id="graph-stats">
+      <div class="info-item"><div class="label">Peak TX</div><div class="value" id="graph-peak-tx">-</div></div>
+      <div class="info-item"><div class="label">Peak RX</div><div class="value" id="graph-peak-rx">-</div></div>
+      <div class="info-item"><div class="label">Current TX</div><div class="value" id="graph-now-tx">-</div></div>
+      <div class="info-item"><div class="label">Current RX</div><div class="value" id="graph-now-rx">-</div></div>
+      <div class="info-item"><div class="label">Total TX</div><div class="value" id="graph-total-tx">-</div></div>
+      <div class="info-item"><div class="label">Total RX</div><div class="value" id="graph-total-rx">-</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:11px;color:#8b949e;" id="graph-sub"></p>
   </div>
 </div>
 
-<div class="modal-overlay" id="sfp-modal">
+<div class="modal-overlay" id="transceiver-overlay">
   <div class="modal" style="max-width:550px;">
-    <h3 id="sfp-title">SFP+ Diagnostics</h3>
-    <div id="sfp-content"></div>
+    <h3 id="transceiver-title">SFP+ Diagnostics</h3>
+    <p style="font-size:12px;color:#8b949e;margin-bottom:12px;" id="transceiver-sub"></p>
+    <div id="transceiver-content"></div>
   </div>
 </div>
 
-<div class="modal-confirm-overlay" id="confirm-modal">
+<div class="modal-confirm-overlay" id="confirm-overlay">
   <div class="modal-confirm">
     <h3 id="confirm-title">Confirm</h3>
     <p id="confirm-msg"></p>
     <div class="btns">
       <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-danger" id="confirm-yes" onclick="">Yes</button>
+      <button class="btn btn-danger" id="confirm-yes">Yes</button>
     </div>
   </div>
 </div>
 
-<div class="toast-container" id="toast-container"></div>
+<div id="toast-box" class="toast-container" style="display:none;">
+  <span id="toast-icon"></span>
+  <span id="toast-message"></span>
+</div>
 
 <script>
 window.__DATA__ = {
@@ -80,6 +101,11 @@ window.__DATA__ = {
   columns: {{ tojson .EnabledColumns }},
   portWrap: {{ .PortsWrapThreshold }}
 };
+function closeConfirm() {
+  var el = document.getElementById('confirm-overlay');
+  if (el) el.classList.remove('active');
+}
+window.closeConfirm = closeConfirm;
 </script>
 <script src="/static/dist/dashboard.js"></script>
 </body>
