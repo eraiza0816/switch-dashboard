@@ -38,12 +38,12 @@ type SwitchFormData struct {
 
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"tojson": func(v any) string {
+		"tojson": func(v any) template.JS {
 			b, err := json.Marshal(v)
 			if err != nil {
 				return "null"
 			}
-			return string(b)
+			return template.JS(string(b))
 		},
 		"safe": func(s string) template.HTML {
 			return template.HTML(s)

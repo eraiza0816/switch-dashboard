@@ -20,11 +20,8 @@
 </div>
 
 <div class="container">
-  <div class="card-full">
-    <h2>Configuration Backups</h2>
-    <div id="backup-list"></div>
-    <div id="backup-empty" class="empty-state" style="display:none;">
-      <div class="icon" style="font-size:28px;margin-bottom:8px;">-</div>
+  <div id="table-wrapper" class="card-full">
+    <div id="backup-empty" class="empty-state" style="display:none;padding:40px;">
       <h3>No backups yet</h3>
       <p>Trigger a backup from the switch card on the dashboard.</p>
     </div>
@@ -34,18 +31,21 @@
 <div class="modal-confirm-overlay" id="delete-modal">
   <div class="modal-confirm">
     <h3>Delete Backup</h3>
-    <p id="delete-msg">Are you sure?</p>
+    <p id="modal-filename-display">Are you sure?</p>
     <div class="btns">
       <button class="btn btn-secondary" onclick="closeDelete()">Cancel</button>
-      <button class="btn btn-danger" id="delete-yes" onclick="">Delete</button>
+      <button class="btn btn-danger" id="modal-confirm-btn">Delete</button>
     </div>
   </div>
 </div>
 
-<div class="toast-container" id="toast-container"></div>
+<div id="toast-box" class="toast-container" style="display:none;">
+  <span id="toast-icon"></span>
+  <span id="toast-message"></span>
+</div>
 
 <script>
-function closeDelete() { document.getElementById('delete-modal').classList.remove('active'); }
+function closeDelete() { document.getElementById('delete-modal').classList.remove('open'); }
 </script>
 <script src="/static/dist/backups.js"></script>
 </body>

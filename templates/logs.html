@@ -20,32 +20,49 @@
 </div>
 
 <div class="container">
-  <div class="card-full">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-      <div>
-        <label style="font-size:11px;color:#8b949e;margin-right:6px;">Log Level</label>
-        <select id="log-level" onchange="updateLogLevel(this.value)" style="padding:4px 8px;font-size:12px;">
-          <option value="DEBUG" {{ if eq .CurrentLogLevel "DEBUG" }}selected{{ end }}>DEBUG</option>
-          <option value="INFO" {{ if eq .CurrentLogLevel "INFO" }}selected{{ end }}>INFO</option>
-          <option value="WARNING" {{ if or (eq .CurrentLogLevel "WARNING") (eq .CurrentLogLevel "WARN") }}selected{{ end }}>WARNING</option>
-          <option value="ERROR" {{ if eq .CurrentLogLevel "ERROR" }}selected{{ end }}>ERROR</option>
-          <option value="CRITICAL" {{ if eq .CurrentLogLevel "CRITICAL" }}selected{{ end }}>CRITICAL</option>
-          <option value="NONE" {{ if eq .CurrentLogLevel "NONE" }}selected{{ end }}>NONE</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-secondary" onclick="document.getElementById('log-file-download').click()">Download</a>
-        <a id="log-file-download" href="/api/logs/download" style="display:none;"></a>
-        <button class="btn btn-danger" onclick="clearLogs()">Clear</button>
-      </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+    <div>
+      <label style="font-size:11px;color:#8b949e;margin-right:6px;">Log Level</label>
+      <select id="log-level" onchange="updateLogLevel(this.value)" style="padding:4px 8px;font-size:12px;">
+        <option value="DEBUG" {{ if eq .CurrentLogLevel "DEBUG" }}selected{{ end }}>DEBUG</option>
+        <option value="INFO" {{ if eq .CurrentLogLevel "INFO" }}selected{{ end }}>INFO</option>
+        <option value="WARNING" {{ if or (eq .CurrentLogLevel "WARNING") (eq .CurrentLogLevel "WARN") }}selected{{ end }}>WARNING</option>
+        <option value="ERROR" {{ if eq .CurrentLogLevel "ERROR" }}selected{{ end }}>ERROR</option>
+        <option value="CRITICAL" {{ if eq .CurrentLogLevel "CRITICAL" }}selected{{ end }}>CRITICAL</option>
+        <option value="NONE" {{ if eq .CurrentLogLevel "NONE" }}selected{{ end }}>NONE</option>
+      </select>
     </div>
-    <div id="log-container" style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;"></div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span id="refresh-dot" style="display:none;"></span>
+      <span id="refresh-btn-text"></span>
+      <button class="btn btn-secondary" onclick="document.getElementById('log-file-download').click()">Download</button>
+      <a id="log-file-download" href="/api/logs/download" style="display:none;"></a>
+      <button class="btn btn-danger" onclick="clearLogs()">Clear</button>
+    </div>
   </div>
-  <div id="autoscroll-banner" style="display:none;text-align:center;cursor:pointer;padding:6px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:8px;font-size:11px;color:#58a6ff;margin-top:8px;" onclick="resumeAutoscroll()">Auto-scroll Paused - Click to resume</div>
+  <div id="console-screen" style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;"></div>
+  <div id="empty-state" style="display:none;text-align:center;padding:40px;color:#8b949e;">
+    <div style="font-size:28px;margin-bottom:8px;">-</div>
+    <h3 style="font-size:15px;color:#f0f6fc;margin-bottom:6px;">No logs yet</h3>
+    <p style="font-size:13px;">Logs will appear here as the server runs.</p>
+  </div>
+  <div id="autoscroll-banner" style="display:none;text-align:center;cursor:pointer;padding:6px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:8px;font-size:11px;color:#58a6ff;margin-top:8px;" onclick="resumeAutoscroll()">Auto-scroll paused - click to resume</div>
 </div>
 
-<div class="toast-container" id="toast-container"></div>
-
+<div id="toast-box" class="toast-container" style="display:none;">
+  <span id="toast-icon"></span>
+  <span id="toast-message"></span>
+</div>
+<script>
+function updateLogLevel(level) {
+  fetch('/api/logs/level', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level})})
+    .then(r=>r.json()).then(d=>{if(d.status==='ok') window.location.reload()});
+}
+function clearLogs() {
+  fetch('/api/logs/clear',{method:'POST'}).then(r=>r.json()).then(()=>window.location.reload());
+}
+function resumeAutoscroll() { document.getElementById('autoscroll-banner').style.display='none'; }
+</script>
 <script src="/static/dist/logs.js"></script>
 </body>
 </html>

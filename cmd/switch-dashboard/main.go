@@ -53,15 +53,25 @@ func main() {
 	}
 
 	cache := server.NewCache()
+	enabledCols := cfg.EnabledColumns
+	if len(enabledCols) == 0 {
+		enabledCols = []string{"port", "status", "speed", "packets", "bytes", "info", "notes"}
+	}
 	cfgProvider := &appConfig{
-		title:          cfg.Title,
-		refresh:        cfg.RefreshInterval,
-		version:        "0.1.0",
+		title:              cfg.Title,
+		refresh:            cfg.RefreshInterval,
+		enabledColumns:     enabledCols,
+		version:            "0.1.0",
 	}
 
 	srv := server.NewServer(cache, cfgProvider, al, nil, mustStaticFS())
 
-	// Start poller for each active switch
+	// Seed mock data immediately so the UI has something to show
+	for _, sw := range cfg.ActiveSwitches() {
+		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger)
+	}
+
+	// Try connecting to real switches in the background
 	for _, sw := range cfg.ActiveSwitches() {
 		sw := sw
 		go func() {
@@ -71,19 +81,16 @@ func main() {
 
 			client, err := rtlplayground.New(ip, password)
 			if err != nil {
-				logger.Error("failed to connect", "ip", ip, "error", err)
-				startPolling(cache, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger)
+				logger.Warn("falling back to mock data", "ip", ip, "error", err)
 				return
 			}
 
-			// Initial scrape
 			info, err := client.ScrapeInformation()
 			if err != nil {
-				logger.Error("initial scrape failed", "ip", ip, "error", err)
-				startPolling(cache, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger)
+				logger.Warn("initial scrape failed, keeping mock", "ip", ip, "error", err)
 				return
 			}
-			logger.Info("connected to switch", "ip", ip, "model", info.HWVer, "hostname", info.Hostname)
+			logger.Info("connected, switching to live data", "ip", ip, "model", info.HWVer)
 
 			startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger)
 		}()
