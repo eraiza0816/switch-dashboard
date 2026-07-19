@@ -74,5 +74,38 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 		s.Logger.Info("config saved", "switches", len(cfg.Switches))
 	}
 
+	// Update cache with new switch names/ips so dashboard reflects changes immediately
+	for _, sw := range cfg.Switches {
+		existing := s.Cache.GetSwitch(sw.IP)
+		if existing != nil {
+			existing.Name = sw.Name
+			existing.Model = sw.Model
+			s.Cache.UpdateSwitch(sw.IP, existing)
+		} else {
+			// New switch: seed with basic data
+			s.Cache.UpdateSwitch(sw.IP, &SwitchData{
+				Name:   sw.Name,
+				IP:     sw.IP,
+				Model:  sw.Model,
+				Status: "online",
+				Ports:  []PortState{},
+			})
+		}
+	}
+
+	// Remove cached switches that are no longer in config
+	for _, ip := range s.Cache.GetAllIPs() {
+		found := false
+		for _, sw := range cfg.Switches {
+			if sw.IP == ip {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.Cache.RemoveSwitch(ip)
+		}
+	}
+
 	http.Redirect(w, r, fmt.Sprintf("/config?saved=1&lang=%s", r.FormValue("lang")), http.StatusFound)
 }
