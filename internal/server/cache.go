@@ -36,9 +36,9 @@ type SwitchData struct {
 	Status     string            `json:"status"`
 	Error      string            `json:"error,omitempty"`
 	Timestamp  float64           `json:"timestamp"`
-	DHCP       interface{}       `json:"dhcp_snooping"`
-	IGMP       interface{}       `json:"igmp"`
-	Jumbo      interface{}       `json:"jumbo_frame"`
+	DHCP       SnoopingStatus    `json:"dhcp_snooping"`
+	IGMP       IGMPStatus        `json:"igmp"`
+	Jumbo      JumboFrameStatus  `json:"jumbo_frame"`
 }
 
 type MACEntry struct {
@@ -150,6 +150,27 @@ func (c *Cache) GetSpeeds() map[string]map[string]PortSpeeds {
 	}
 	_ = result
 	return c.speeds
+}
+
+type SnoopingStatus struct {
+	Enabled bool              `json:"enabled"`
+	Ports   map[string]string `json:"ports"`
+}
+
+type IGMPStatus struct {
+	Enabled bool        `json:"enabled"`
+	Entries []IGMPEntry `json:"entries"`
+}
+
+type IGMPEntry struct {
+	IP    string `json:"ip"`
+	Ports string `json:"ports"`
+	VLAN  string `json:"vlan"`
+}
+
+type JumboFrameStatus struct {
+	Enabled bool   `json:"enabled"`
+	Size    string `json:"size"`
 }
 
 func (c *Cache) GetAllIPs() []string {

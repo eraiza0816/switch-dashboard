@@ -223,6 +223,9 @@ func (p *Poller) poll() {
 		Status:   "online",
 		Ports:    ports,
 		Timestamp: now,
+		DHCP:     server.SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
+		IGMP:     server.IGMPStatus{Enabled: false},
+		Jumbo:    server.JumboFrameStatus{Enabled: false, Size: "Disabled"},
 	}
 
 	if info != nil {
@@ -242,7 +245,47 @@ func (p *Poller) poll() {
 	}
 	swData.MACTable = macEntries
 
+	// Fetch extra data
+	eeeData, vlanList, lagData, mirrorData, bwData, mtuData := p.fetchExtraData()
+	if len(eeeData) > 0 {
+		_ = eeeData
+	}
+	if len(vlanList) > 0 {
+		_ = vlanList
+	}
+	if len(lagData) > 0 {
+		_ = lagData
+	}
+	if mirrorData != nil {
+		_ = mirrorData
+	}
+	if len(bwData) > 0 {
+		_ = bwData
+	}
+	if len(mtuData) > 0 {
+		for _, m := range mtuData {
+			if m.PortNum > 0 {
+				swData.Jumbo.Enabled = true
+				swData.Jumbo.Size = m.MTU
+				break
+			}
+		}
+	}
+
 	p.cache.UpdateSwitch(p.ip, swData)
+}
+
+func (p *Poller) fetchExtraData() ([]rtlplayground.EEEEntry, []rtlplayground.VLANListItem, []rtlplayground.LAGEntry, *rtlplayground.MirrorConfig, []rtlplayground.BandwidthEntry, []rtlplayground.MTUEntry) {
+	if p.client == nil {
+		return nil, nil, nil, nil, nil, nil
+	}
+	eee, _ := p.client.ScrapeEEE()
+	vlan, _ := p.client.ScrapeVLANList()
+	lag, _ := p.client.ScrapeLAG()
+	mirror, _ := p.client.ScrapeMirror()
+	bw, _ := p.client.ScrapeBandwidth()
+	mtu, _ := p.client.ScrapeMTU()
+	return eee, vlan, lag, mirror, bw, mtu
 }
 
 func (p *Poller) fetchData() ([]rtlplayground.StatusEntry, *rtlplayground.Information, []rtlplayground.SFPDiagEntry, []rtlplayground.L2Entry) {
