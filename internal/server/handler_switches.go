@@ -3,11 +3,10 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 )
-
-var _ = json.Marshal // ensure import
 
 func (s *Server) handleAPISwitches(w http.ResponseWriter, r *http.Request) {
 	data := s.Cache.GetSwitches()
@@ -51,20 +50,50 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	var switches []SwitchFormData
-	for i, sw := range s.Cache.GetSwitches() {
+	_ = switches // fallback: read from config.json below
+
+	// Read switches from saved config.json (not from the live cache)
+	type cfgSwitch struct {
+		Name     string `json:"name"`
+		IP       string `json:"ip"`
+		Password string `json:"password"`
+		Model    string `json:"model"`
+		PortCount int   `json:"port_count"`
+		Enabled  bool   `json:"enabled"`
+	}
+	type cfgRoot struct {
+		Title           string      `json:"title"`
+		RefreshInterval int         `json:"refresh_interval"`
+		Switches        []cfgSwitch `json:"switches"`
+	}
+
+	diskCfg := cfgRoot{RefreshInterval: 30}
+	if data, err := os.ReadFile("config.json"); err == nil {
+		json.Unmarshal(data, &diskCfg)
+	}
+
+	for i, sw := range diskCfg.Switches {
 		switches = append(switches, SwitchFormData{
-			Index:      i,
-			Name:       sw.Name,
-			IP:         sw.IP,
-			Model:      sw.Model,
-			PortCount:  8,
-			Enabled:    true,
+			Index:     i,
+			Name:      sw.Name,
+			IP:        sw.IP,
+			Password:  sw.Password,
+			Model:     sw.Model,
+			PortCount: sw.PortCount,
+			Enabled:   sw.Enabled,
 		})
 	}
+
+	title := diskCfg.Title
+	if title == "" {
+		title = s.Config.Title()
+	}
+
 	data := PageData{
-		Title:    s.Config.Title(),
+		Title:    title,
+		Saved:    r.URL.Query().Get("saved") == "1",
 		Version:  Version,
-		Refresh:  s.Config.RefreshInterval(),
+		Refresh:  diskCfg.RefreshInterval,
 		Switches: switches,
 	}
 	s.renderTemplate(w, "config.html", data)
@@ -95,13 +124,7 @@ func (s *Server) handleAPIDocs(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "api_docs.html", data)
 }
 
-func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	http.Redirect(w, r, "/config", http.StatusFound)
-}
+
 
 func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
