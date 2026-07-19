@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title }}</title>
+<title>{{ .Title }}</title>
 <link rel="icon" href="/static/logo.png" type="image/png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -557,11 +557,11 @@
   }
   
   :root {
-    {% if grid_columns and grid_columns != 'auto' %}
-    --grid-columns: repeat({{ grid_columns }}, 1fr);
-    {% else %}
+    {{ if and .GridColumns (ne .GridColumns "auto") }}
+    --grid-columns: repeat({{ .GridColumns }}, 1fr);
+    {{ else }}
     --grid-columns: repeat(auto-fit, minmax(600px, 1fr));
-    {% endif %}
+    {{ end }}
   }
 </style>
 </head>
@@ -569,7 +569,7 @@
 <div class="header">
   <div style="display: flex; align-items: center; gap: 14px;">
     <img src="/static/logo.png" alt="Horaco Logo" style="height: 38px; width: 38px; border-radius: 8px; object-fit: cover; border: 1px solid #30363d; box-shadow: 0 0 10px rgba(88, 166, 255, 0.15);">
-    <h1>{{ title }}</h1>
+    <h1>{{ .Title }}</h1>
   </div>
   <div class="nav-links">
     <span class="status"><span class="dot" id="live-dot"></span><span id="live-text">Live</span></span>
@@ -605,7 +605,7 @@
 </div>
 <div id="app" class="loading">Loading dashboard</div>
 <div class="footer">
-  <div>Refreshes every {{ refresh }} seconds &middot; <a href="/config" style="color:#8b949e">Configure Nodes</a> &middot; <a href="/api-docs" style="color:#8b949e">API Reference</a> &middot; <span class="version-badge">v{{ version }}</span></div>
+  <div>Refreshes every {{ .Refresh }} seconds &middot; <a href="/config" style="color:#8b949e">Configure Nodes</a> &middot; <a href="/api-docs" style="color:#8b949e">API Reference</a> &middot; <span class="version-badge">v{{ .Version }}</span></div>
   <div style="margin-top: 6px; font-size: 11px; color: #8b949e;">Created by <a href="https://github.com/byte4geek/switch-dashboard" target="_blank" style="color: #58a6ff; text-decoration: none; font-weight: 500;">Byte4Geek</a> for the community</div>
 </div>
 
@@ -674,9 +674,9 @@
 </div>
 
 <script>
-const REFRESH_SECONDS = {{ refresh }};
-const enabledColumns = {{ enabled_columns|tojson }} || ['port', 'status', 'speed', 'packets', 'bytes', 'info', 'notes'];
-const PORTS_WRAP_THRESHOLD = {{ ports_wrap_threshold|default(0)|tojson }};
+const REFRESH_SECONDS = {{ .Refresh }};
+const enabledColumns = {{ tojson .EnabledColumns }} || ['port', 'status', 'speed', 'packets', 'bytes', 'info', 'notes'];
+const PORTS_WRAP_THRESHOLD = {{ .PortsWrapThreshold }};
 
 let currentGraphIp = null;
 let currentGraphPort = null;
@@ -730,8 +730,8 @@ function startCountdown() {
 const defaultOrder = ['port', 'status', 'speed', 'packets', 'bytes', 'info', 'notes'];
 let columnOrder = [];
 
-const serverColumnWidths = {{ column_widths|tojson }};
-const serverColumnOrder = {{ column_order|tojson }};
+const serverColumnWidths = {};
+const serverColumnOrder = [];
 
 function initColumnOrder() {
   let savedOrder = serverColumnOrder && serverColumnOrder.length > 0 ? serverColumnOrder : null;

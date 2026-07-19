@@ -1,25 +1,13 @@
-FROM python:3.11-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    DASHBOARD_DATA_DIR=/data
-
-# Create and set the workspace directory
-WORKDIR /app
-
-# Install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application files
+FROM golang:1.22-alpine AS builder
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
+RUN CGO_ENABLED=0 go build -o switch-dashboard ./cmd/switch-dashboard/
 
-# Create the data directory
-RUN mkdir -p /data
-
-# Expose Flask port
+FROM scratch
+COPY --from=builder /build/switch-dashboard /switch-dashboard
+COPY --from=builder /build/templates/ /templates/
+COPY --from=builder /build/static/ /static/
 EXPOSE 8080
-
-# Run the application
-CMD ["python", "app.py"]
+ENTRYPOINT ["/switch-dashboard"]

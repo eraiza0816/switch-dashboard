@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title }} - System Logs</title>
+<title>{{ .Title }} - System Logs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -397,12 +397,12 @@
       <div class="control-group">
         <label for="log-level-select">Log Level Mode:</label>
         <select id="log-level-select" onchange="updateLogLevel(this.value)">
-          <option value="DEBUG" {% if current_log_level == 'DEBUG' %}selected{% endif %}>DEBUG (Detailed)</option>
-          <option value="INFO" {% if current_log_level == 'INFO' %}selected{% endif %}>INFO (Standard)</option>
-          <option value="WARNING" {% if current_log_level == 'WARNING' or current_log_level == 'WARN' %}selected{% endif %}>WARNING (Warnings)</option>
-          <option value="ERROR" {% if current_log_level == 'ERROR' %}selected{% endif %}>ERROR (Errors Only)</option>
-          <option value="CRITICAL" {% if current_log_level == 'CRITICAL' %}selected{% endif %}>CRITICAL (System Failures)</option>
-          <option value="NONE" {% if current_log_level == 'NONE' %}selected{% endif %}>NONE (Fully Silenced)</option>
+          <option value="DEBUG" {{ if eq .CurrentLogLevel "DEBUG" }}selected{{ end }}>DEBUG (Detailed)</option>
+          <option value="INFO" {{ if eq .CurrentLogLevel "INFO" }}selected{{ end }}>INFO (Standard)</option>
+          <option value="WARNING" {{ if or (eq .CurrentLogLevel "WARNING") (eq .CurrentLogLevel "WARN") }}selected{{ end }}>WARNING (Warnings)</option>
+          <option value="ERROR" {{ if eq .CurrentLogLevel "ERROR" }}selected{{ end }}>ERROR (Errors Only)</option>
+          <option value="CRITICAL" {{ if eq .CurrentLogLevel "CRITICAL" }}selected{{ end }}>CRITICAL (System Failures)</option>
+          <option value="NONE" {{ if eq .CurrentLogLevel "NONE" }}selected{{ end }}>NONE (Fully Silenced)</option>
         </select>
         <span style="font-size: 11px; color: #8b949e; max-width: 250px;">
           💡 Changes apply <b>dynamically</b> to the running background crawler thread instantly.
@@ -449,7 +449,7 @@
     <a href="/config" style="color:#8b949e; text-decoration: none;">Switch Config</a> &middot; 
     <a href="/backups" style="color:#8b949e; text-decoration: none;">Backups Manager</a> &middot; 
     <a href="/api-docs" style="color:#8b949e; text-decoration: none;">API Reference</a> &middot; 
-    <span class="version-badge">v{{ version }}</span>
+    <span class="version-badge">v{{ .Version }}</span>
   </div>
   <div style="margin-top: 6px; font-size: 11px; color: #8b949e;">Created by <a href="https://github.com/byte4geek/switch-dashboard" target="_blank" style="color: #58a6ff; text-decoration: none; font-weight: 500;">Byte4Geek</a> for the community</div>
 </div>

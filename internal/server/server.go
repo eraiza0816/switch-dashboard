@@ -4,11 +4,15 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+var Version = "0.1.0"
 
 type Server struct {
 	Router   *chi.Mux
@@ -70,14 +74,23 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, st
 	s.Router.Use(middleware.Recoverer)
 	s.Router.Use(middleware.RealIP)
 
-	if tmplFS != nil {
-		s.tmpl = template.Must(template.ParseFS(tmplFS, "*.html"))
-	} else {
-		s.tmpl = template.Must(template.New("empty").Parse(`<!DOCTYPE html><html><body>placeholder</body></html>`))
-	}
-
+	s.tmpl = loadTemplatesWithFS(tmplFS)
 	s.registerRoutes()
 	return s
+}
+
+func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
+	funcs := templateFuncs()
+	if tmplFS != nil {
+		return template.Must(template.New("").Funcs(funcs).ParseFS(tmplFS, "*.html"))
+	}
+	// Fall back to disk
+	dir := "templates"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return template.Must(template.New("empty").Funcs(funcs).Parse(`<!DOCTYPE html><html><body>placeholder</body></html>`))
+	}
+	glob := filepath.Join(dir, "*.html")
+	return template.Must(template.New("").Funcs(funcs).ParseGlob(glob))
 }
 
 func (s *Server) registerRoutes() {
