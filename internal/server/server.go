@@ -104,6 +104,7 @@ func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
 func (s *Server) registerRoutes() {
 	s.Router.Get("/", s.handleDashboard)
 	s.Router.Get("/config", s.handleConfig)
+	s.Router.Post("/config", s.handleConfigSave)
 	s.Router.Get("/map", s.handleMap)
 	s.Router.Get("/backups", s.handleBackups)
 	s.Router.Get("/logs", s.handleLogs)

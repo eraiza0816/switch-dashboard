@@ -95,6 +95,14 @@ func (s *Server) handleAPIDocs(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "api_docs.html", data)
 }
 
+func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	http.Redirect(w, r, "/config", http.StatusFound)
+}
+
 func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:   s.Config.Title(),

@@ -279,6 +279,17 @@ func Test404(t *testing.T) {
 	}
 }
 
+func TestConfigSave(t *testing.T) {
+	s := newTestServer()
+	body := strings.NewReader("title=Test&refresh_interval=30")
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/config", body)
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusFound {
+		t.Fatalf("config POST: expected 302, got %d", w.Code)
+	}
+}
+
 func TestHTMLPages(t *testing.T) {
 	s := newTestServer()
 	for _, path := range []string{"/", "/logs", "/backups", "/config", "/api-docs"} {
