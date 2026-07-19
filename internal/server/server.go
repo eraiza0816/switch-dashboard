@@ -117,6 +117,7 @@ func (s *Server) registerRoutes() {
 		r.Post("/switches/{ip}/backup", s.handleAPIBackup)
 		r.Post("/switches/{ip}/reboot", s.handleAPIReboot)
 		r.Post("/switches/{ip}/upload", s.handleAPIUpload)
+		r.Post("/switches/{ip}/cmd", s.handleAPISwitchCmd)
 
 		r.Get("/speeds", s.handleAPISpeeds)
 		r.Get("/history", s.handleAPIHistory)

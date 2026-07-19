@@ -35,16 +35,6 @@ func (s *Server) handleAPIRefreshMAC(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleAPISwitchSFP(w http.ResponseWriter, r *http.Request) {
-	ip := chi.URLParam(r, "ip")
-	if ip == "" {
-		http.Error(w, "missing ip", http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("{}"))
-}
-
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:              s.Config.Title(),
