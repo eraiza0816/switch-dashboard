@@ -61,7 +61,8 @@ a:hover { text-decoration: underline; }
 .sfp-speed-link:hover { color: #79c0ff; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); z-index: 1000; justify-content: center; align-items: center; }
-.modal-overlay.active { display: flex; }
+.modal-overlay.active,
+.modal-overlay.open { display: flex; }
 .modal { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 24px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative; }
 .modal h3 { font-size: 15px; font-weight: 600; color: #f0f6fc; margin-bottom: 16px; }
 
@@ -101,7 +102,8 @@ a:hover { text-decoration: underline; }
 .empty-state p { font-size: 13px; }
 
 .modal-confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); z-index: 1100; justify-content: center; align-items: center; }
-.modal-confirm-overlay.active { display: flex; }
+.modal-confirm-overlay.active,
+.modal-confirm-overlay.open { display: flex; }
 .modal-confirm { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; text-align: center; }
 .modal-confirm h3 { font-size: 15px; margin-bottom: 8px; color: #f0f6fc; }
 .modal-confirm p { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
