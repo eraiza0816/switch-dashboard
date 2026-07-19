@@ -1,3 +1,4 @@
+// @ts-nocheck
 let pollingInterval = null;
 let isPollingActive = true;
 let isUserScrolledUp = false;

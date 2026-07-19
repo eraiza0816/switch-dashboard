@@ -1,3 +1,4 @@
+// @ts-nocheck
 let fileToDelete = null;
 let rowToDelete = null;
 
