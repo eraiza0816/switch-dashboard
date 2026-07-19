@@ -10,3 +10,4 @@ config.json
 switch-dashboard
 .DS_Store
 Thumbs.db
+node_modules/
