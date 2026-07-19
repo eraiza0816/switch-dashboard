@@ -82,13 +82,29 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 			existing.Model = sw.Model
 			s.Cache.UpdateSwitch(sw.IP, existing)
 		} else {
-			// New switch: seed with basic data
+			// New switch: seed with mock data so UI shows something
 			s.Cache.UpdateSwitch(sw.IP, &SwitchData{
 				Name:   sw.Name,
 				IP:     sw.IP,
 				Model:  sw.Model,
 				Status: "online",
-				Ports:  []PortState{},
+				Ports: []PortState{
+					{Port: "1", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 100000, CumRX: 200000, SpeedTX: 800, SpeedRX: 1600},
+					{Port: "2", Status: "down", Link: "Link Down"},
+					{Port: "3", Status: "up", Link: "Link Up", Speed: "2.5G", Duplex: "Full", CumTX: 50000, CumRX: 100000, SpeedTX: 400, SpeedRX: 800},
+					{Port: "4", Status: "disable", Link: "Disabled"},
+					{Port: "5", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 200000, CumRX: 400000, SpeedTX: 1600, SpeedRX: 3200, IsSFP: true},
+					{Port: "6", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 200000, CumRX: 400000, SpeedTX: 1600, SpeedRX: 3200, IsSFP: true},
+				},
+				MACTable: []MACEntry{
+					{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"},
+					{MAC: "AA:BB:CC:DD:EE:02", Type: "l", Port: "3", VLAN: "001"},
+					{MAC: "AA:BB:CC:DD:EE:03", Type: "s", Port: "5", VLAN: "010"},
+				},
+				MACScraped: 0,
+				DHCP: SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
+				IGMP: IGMPStatus{Enabled: false},
+				Jumbo: JumboFrameStatus{Enabled: false, Size: "Disabled"},
 			})
 		}
 	}
