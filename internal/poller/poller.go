@@ -185,7 +185,7 @@ func (p *Poller) poll() {
 		macEntries = append(macEntries, server.MACEntry{
 			MAC:  entry.MAC,
 			Type: entry.Type,
-			Port: entry.Port,
+			Port: entry.PortStr(),
 			VLAN: entry.VLAN,
 		})
 	}

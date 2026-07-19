@@ -166,7 +166,10 @@ func (c *Client) DeleteL2Entry(idx int) error {
 }
 
 func parseHexIndex(s string) int {
-	if len(s) < 4 {
+	for len(s) > 1 && (s[0] == '0' && s[1] == 'x' || s[0] == '0' && s[1] == 'X') {
+		s = s[2:]
+	}
+	if len(s) < 1 {
 		return 0
 	}
 	v, err := strconv.ParseInt(s, 16, 32)

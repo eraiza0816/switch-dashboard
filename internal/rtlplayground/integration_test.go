@@ -10,7 +10,7 @@ import (
 func TestIntegrationAgainstSimulator(t *testing.T) {
 	ip := os.Getenv("SWITCH_IP")
 	if ip == "" {
-		ip = "localhost:8080"
+		ip = "127.0.0.1:8080"
 	}
 	password := os.Getenv("SWITCH_PASSWORD")
 	if password == "" {

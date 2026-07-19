@@ -25,7 +25,7 @@ type StatusEntry struct {
 	SFPVendor string `json:"sfp_vendor,omitempty"`
 	SFPModel  string `json:"sfp_model,omitempty"`
 	SFPSerial string `json:"sfp_serial,omitempty"`
-	SFPLos    string `json:"sfp_los,omitempty"`
+	SFPLos    any    `json:"sfp_los,omitempty"`
 	Adv       string `json:"adv,omitempty"`
 	Link      int    `json:"link"`
 	TxG       string `json:"txG"`
@@ -33,6 +33,8 @@ type StatusEntry struct {
 	RxG       string `json:"rxG"`
 	RxB       string `json:"rxB"`
 }
+
+func (s *StatusEntry) HasSFP() bool { return s.IsSFP != 0 }
 
 type SFPDiagEntry struct {
 	PortNum    int    `json:"portNum"`
@@ -54,8 +56,19 @@ type L2Entry struct {
 	MAC   string `json:"mac"`
 	VLAN  string `json:"vlan"`
 	Type  string `json:"type"`
-	Port  string `json:"port"`
+	Port  any    `json:"port"`
 	Index string `json:"idx"`
+}
+
+func (e *L2Entry) PortStr() string {
+	switch v := e.Port.(type) {
+	case string:
+		return v
+	case float64:
+		return itoa64(int64(v))
+	default:
+		return ""
+	}
 }
 
 type L2DeleteResult struct {
@@ -111,4 +124,26 @@ type MTUEntry struct {
 type PortInfo struct {
 	PortNum   int    `json:"portNum"`
 	Name      string `json:"name,omitempty"`
+}
+
+func itoa64(v int64) string {
+	if v == 0 {
+		return "0"
+	}
+	var buf [20]byte
+	i := len(buf)
+	neg := v < 0
+	if neg {
+		v = -v
+	}
+	for v > 0 {
+		i--
+		buf[i] = byte('0' + v%10)
+		v /= 10
+	}
+	if neg {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
 }
