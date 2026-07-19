@@ -22,6 +22,7 @@ type Poller struct {
 	stopCh   chan struct{}
 	counters map[string]*CounterState
 	history  map[string]*History
+	notes    map[string]string
 	logger   *slog.Logger
 }
 
@@ -35,8 +36,25 @@ func New(cache *server.Cache, ip, name, model string, interval int) *Poller {
 		stopCh:   make(chan struct{}),
 		counters: make(map[string]*CounterState),
 		history:  make(map[string]*History),
+		notes:    make(map[string]string),
 		logger:   slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})),
 	}
+}
+
+func NewWithNotes(cache *server.Cache, ip, name, model string, interval int, notes map[string]string) *Poller {
+	p := New(cache, ip, name, model, interval)
+	if notes != nil {
+		p.notes = notes
+	}
+	return p
+}
+
+func NewWithClientAndNotes(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, notes map[string]string) *Poller {
+	p := NewWithClient(cache, client, ip, name, model, interval)
+	if notes != nil {
+		p.notes = notes
+	}
+	return p
 }
 
 func NewWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int) *Poller {
@@ -172,6 +190,7 @@ func (p *Poller) poll() {
 			linkStr = "Disabled"
 		}
 
+		noteKey := p.ip + ":" + itoa(int64(port))
 		ps := server.PortState{
 			Port:      itoa(int64(port)),
 			Status:    statusStr,
@@ -186,6 +205,7 @@ func (p *Poller) poll() {
 			CumRX:     cumRX,
 			SpeedTX:   speedTX,
 			SpeedRX:   speedRX,
+			Note:      p.notes[noteKey],
 		}
 		ports = append(ports, ps)
 

@@ -66,9 +66,15 @@ func main() {
 
 	srv := server.NewServer(cache, cfgProvider, al, nil, mustStaticFS())
 
+	// Pass notes from config to poller
+	notes := cfg.Notes
+	if notes == nil {
+		notes = make(map[string]string)
+	}
+
 	// Seed mock data immediately so the UI has something to show
 	for _, sw := range cfg.ActiveSwitches() {
-		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger)
+		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes)
 	}
 
 	// Try connecting to real switches in the background
@@ -92,7 +98,7 @@ func main() {
 			}
 			logger.Info("connected, switching to live data", "ip", ip, "model", info.HWVer)
 
-			startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger)
+			startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes)
 		}()
 	}
 
@@ -106,13 +112,13 @@ func main() {
 	}
 }
 
-func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger) {
-	p := poller.New(cache, ip, name, model, interval)
+func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string) {
+	p := poller.NewWithNotes(cache, ip, name, model, interval, notes)
 	p.Start()
 }
 
-func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger) {
-	p := poller.NewWithClient(cache, client, ip, name, model, interval)
+func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string) {
+	p := poller.NewWithClientAndNotes(cache, client, ip, name, model, interval, notes)
 	p.Start()
 }
 
