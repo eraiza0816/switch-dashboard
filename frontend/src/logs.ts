@@ -1,4 +1,3 @@
-// @ts-nocheck
 let pollingInterval = null;
 let isPollingActive = true;
 let isUserScrolledUp = false;
@@ -6,20 +5,16 @@ let isUpdatingLogs = false;
 let lastRenderedLines = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Bind console scroll to check if user has scrolled up to inspect previous lines
-  const consoleScreen = document.getElementById("console-screen");
-  const banner = document.getElementById("autoscroll-banner");
+  const consoleScreen = document.getElementById("console-screen")!;
+  const banner = document.getElementById("autoscroll-banner")!;
   
   consoleScreen.addEventListener("scroll", () => {
-    // Ignore scroll events triggered programmatically during log render cycles
     if (isUpdatingLogs) return;
     
-    // If they are near the bottom (within 40px), auto-scroll is allowed
     const threshold = 40;
     const isAtBottom = (consoleScreen.scrollHeight - consoleScreen.scrollTop - consoleScreen.clientHeight) <= threshold;
     isUserScrolledUp = !isAtBottom;
     
-    // Toggle floating banner visibility
     if (isUserScrolledUp) {
       banner.style.display = "flex";
     } else {
@@ -27,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Initial fetch and start polling
   fetchLogs();
   startPolling();
 });
@@ -37,8 +31,8 @@ function startPolling() {
   pollingInterval = setInterval(fetchLogs, 2000);
   isPollingActive = true;
   
-  const dot = document.getElementById("refresh-dot");
-  const text = document.getElementById("refresh-btn-text");
+  const dot = document.getElementById("refresh-dot")!;
+  const text = document.getElementById("refresh-btn-text")!;
   dot.classList.add("active");
   text.textContent = "Polling Active";
 }
@@ -47,8 +41,8 @@ function stopPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
   isPollingActive = false;
   
-  const dot = document.getElementById("refresh-dot");
-  const text = document.getElementById("refresh-btn-text");
+  const dot = document.getElementById("refresh-dot")!;
+  const text = document.getElementById("refresh-btn-text")!;
   dot.classList.remove("active");
   text.textContent = "Polling Paused";
 }
@@ -80,9 +74,7 @@ async function fetchLogs() {
   }
 }
 
-function parseLogLine(line) {
-  // Typical log line: 2026-05-25 11:14:25,123 - scraper - INFO - Log message content
-  // Or: 2026-05-25 11:14:25 - scraper - INFO - Log message content
+function parseLogLine(line: string): string {
   const regex = /^(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:,\d+)?)\s-\s([^\s]+)\s-\s([A-Z]+)\s-\s(.*)$/;
   const match = line.match(regex);
   
@@ -100,7 +92,6 @@ function parseLogLine(line) {
     `;
   }
   
-  // Fallback for lines that don't match format perfectly
   let cleanLine = escapeHtml(line);
   let classLevel = "info";
   if (line.includes("DEBUG")) classLevel = "debug";
@@ -111,10 +102,10 @@ function parseLogLine(line) {
   return `<div class="log-line log-${classLevel}">${cleanLine}</div>`;
 }
 
-function renderLogs(lines) {
-  const emptyState = document.getElementById("empty-state");
-  const container = document.getElementById("logs-container");
-  const consoleScreen = document.getElementById("console-screen");
+function renderLogs(lines: string[]) {
+  const emptyState = document.getElementById("empty-state")!;
+  const container = document.getElementById("logs-container")!;
+  const consoleScreen = document.getElementById("console-screen")!;
   
   if (!lines || lines.length === 0) {
     emptyState.style.display = "flex";
@@ -127,10 +118,8 @@ function renderLogs(lines) {
   emptyState.style.display = "none";
   container.style.display = "block";
   
-  // Set update flag to ignore scroll events triggered by this render cycle
   isUpdatingLogs = true;
   
-  // Try to find if we can just append new lines to avoid destroying DOM and resetting scroll anchoring
   let appendStartIndex = -1;
   if (lastRenderedLines.length > 0) {
     const matchCount = Math.min(3, lastRenderedLines.length);
@@ -165,7 +154,6 @@ function renderLogs(lines) {
       });
       container.appendChild(fragment);
       
-      // Limit DOM size to 1000 lines for efficiency
       const maxDomLines = 1000;
       while (container.children.length > maxDomLines) {
         container.removeChild(container.firstChild);
@@ -183,7 +171,6 @@ function renderLogs(lines) {
       }
     }
   } else {
-    // Fallback: render all lines
     const parsedHtml = lines.map(parseLogLine).join('');
     container.innerHTML = parsedHtml;
     lastRenderedLines = [...lines];
@@ -193,14 +180,13 @@ function renderLogs(lines) {
     }
   }
   
-  // Release update flag asynchronously to allow browser layout calculations to settle
   setTimeout(() => {
     isUpdatingLogs = false;
   }, 50);
 }
 
-async function updateLogLevel(level) {
-  lastRenderedLines = []; // Force full re-render on next fetch
+async function updateLogLevel(level: string) {
+  lastRenderedLines = [];
   try {
     const res = await fetch("/api/logs/level", {
       method: "POST",
@@ -213,7 +199,6 @@ async function updateLogLevel(level) {
     
     if (res.ok && data.status === "ok") {
       showToast(`Log level dynamically changed to ${level}`, "success");
-      // Fetch logs immediately to display the server confirmation log
       setTimeout(fetchLogs, 400);
     } else {
       showErrorToast("Failed to update log level: " + (data.error || "Unknown error"));
@@ -235,9 +220,9 @@ async function clearLogs() {
     if (res.ok && data.status === "ok") {
       showToast("Logs successfully cleared on server", "success");
       lastRenderedLines = [];
-      document.getElementById("logs-container").innerHTML = "";
-      document.getElementById("empty-state").style.display = "flex";
-      document.getElementById("logs-container").style.display = "none";
+      document.getElementById("logs-container")!.innerHTML = "";
+      document.getElementById("empty-state")!.style.display = "flex";
+      document.getElementById("logs-container")!.style.display = "none";
     } else {
       showErrorToast("Failed to clear logs: " + (data.error || "Unknown error"));
     }
@@ -248,14 +233,13 @@ async function clearLogs() {
 
 function resumeAutoscrollClick() {
   isUserScrolledUp = false;
-  document.getElementById("autoscroll-banner").style.display = "none";
-  const consoleScreen = document.getElementById("console-screen");
+  document.getElementById("autoscroll-banner")!.style.display = "none";
+  const consoleScreen = document.getElementById("console-screen")!;
   consoleScreen.scrollTop = consoleScreen.scrollHeight;
   showToast("Auto-scroll resumed", "success");
 }
 
-// Helpers
-function escapeHtml(unsafe) {
+function escapeHtml(unsafe: string): string {
   return unsafe
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -264,18 +248,18 @@ function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
-function showSuccessToast(message) {
+function showSuccessToast(message: string) {
   showToast(message, "success");
 }
 
-function showErrorToast(message) {
+function showErrorToast(message: string) {
   showToast(message, "error");
 }
 
-function showToast(message, type, icon) {
-  const toast = document.getElementById("toast-box");
-  const toastIcon = document.getElementById("toast-icon");
-  const toastMsg = document.getElementById("toast-message");
+function showToast(message: string, type: string, icon = "") {
+  const toast = document.getElementById("toast-box")!;
+  const toastIcon = document.getElementById("toast-icon")!;
+  const toastMsg = document.getElementById("toast-message")!;
   
   toast.className = `toast ${type}`;
   toastIcon.textContent = icon;
@@ -286,3 +270,12 @@ function showToast(message, type, icon) {
     toast.classList.remove("show");
   }, 4000);
 }
+
+(window as any).startPolling = startPolling;
+(window as any).stopPolling = stopPolling;
+(window as any).toggleAutoRefresh = toggleAutoRefresh;
+(window as any).fetchLogs = fetchLogs;
+(window as any).updateLogLevel = updateLogLevel;
+(window as any).clearLogs = clearLogs;
+(window as any).resumeAutoscrollClick = resumeAutoscrollClick;
+export {};

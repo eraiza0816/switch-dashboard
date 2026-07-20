@@ -1,4 +1,4 @@
-// @ts-nocheck
+import { t, setLang, getLang } from './i18n';
 
 interface MapNode {
   id: string;
@@ -33,6 +33,8 @@ let positionCache: Record<string, { x: number; y: number }> = {};
 let panX = 0, panY = 0, zoom = 1;
 let dragNode: MapNode | null = null;
 let dragOffX = 0, dragOffY = 0;
+let panStartX = 0, panStartY = 0;
+let isPanning = false;
 let selectedNode: MapNode | null = null;
 let showClients = true;
 let deviceTypes: Record<string, { label: string; icon?: string; path?: string }> = {};
@@ -40,6 +42,7 @@ let searchResults: MapNode[] = [];
 const ICON_PATHS: Record<string, string> = {};
 
 function init() {
+  document.title = t('map.title');
   loadPositionCache();
   loadDeviceTypes();
   fetchTopology();
@@ -73,7 +76,7 @@ async function fetchTopology() {
     computeLayout();
     render();
   } catch (e) {
-    document.getElementById('map-canvas').innerHTML = `<div style="padding:40px;text-align:center;color:#f85149;">Failed to load topology</div>`;
+    document.getElementById('map-canvas').innerHTML = `<div style="padding:40px;text-align:center;color:#f85149;">${t('map.failed_load')}</div>`;
   }
 }
 
@@ -290,6 +293,9 @@ function onBgMouseDown(e: MouseEvent) {
   if (e.target === e.currentTarget) {
     selectedNode = null;
     updateSidebar();
+    isPanning = true;
+    panStartX = e.clientX - panX;
+    panStartY = e.clientY - panY;
   }
 }
 
@@ -309,17 +315,19 @@ function updateSidebar() {
   const n = selectedNode;
   const links = rawLinks.filter(l => l.source === n.id || l.target === n.id);
 
+  const typeLabel = t('map.' + n.type) || n.type;
+  const statusLabel = t('status.' + n.status) || n.status;
   let html = `<div style="padding:16px;">
     <h3 style="font-size:15px;font-weight:600;color:#f0f6fc;margin-bottom:4px;">${n.name}</h3>
-    <p style="font-size:11px;color:#8b949e;margin-bottom:12px;">${n.type} &middot; ${n.status}</p>`;
+    <p style="font-size:11px;color:#8b949e;margin-bottom:12px;">${typeLabel} &middot; ${statusLabel}</p>`;
 
-  if (n.ip) html += `<div class="info-row"><span class="label">IP</span><span class="value">${n.ip}</span></div>`;
-  if (n.mac) html += `<div class="info-row"><span class="label">MAC</span><span class="value">${n.mac}</span></div>`;
-  if (n.model) html += `<div class="info-row"><span class="label">Model</span><span class="value">${n.model}</span></div>`;
-  if (n.vendor) html += `<div class="info-row"><span class="label">Vendor</span><span class="value">${n.vendor}</span></div>`;
+  if (n.ip) html += `<div class="info-row"><span class="label">${t('map.ip')}</span><span class="value">${n.ip}</span></div>`;
+  if (n.mac) html += `<div class="info-row"><span class="label">${t('mac.mac')}</span><span class="value">${n.mac}</span></div>`;
+  if (n.model) html += `<div class="info-row"><span class="label">${t('config.model')}</span><span class="value">${n.model}</span></div>`;
+  if (n.vendor) html += `<div class="info-row"><span class="label">${t('mac.vendor')}</span><span class="value">${n.vendor}</span></div>`;
 
   if (links.length) {
-    html += `<h4 style="font-size:12px;color:#f0f6fc;margin:12px 0 6px;">Links</h4>`;
+    html += `<h4 style="font-size:12px;color:#f0f6fc;margin:12px 0 6px;">${t('map.links')}</h4>`;
     for (const l of links) {
       const peer = rawNodes.find(n => n.id === (l.source === n.id ? l.target : l.source));
       const port = l.source === n.id ? l.source_port : l.target_port;
@@ -329,8 +337,8 @@ function updateSidebar() {
 
   if (n.type === 'client') {
     html += `<div style="margin-top:12px;display:flex;gap:6px;">
-      <input id="rename-input" value="${n.host || n.name}" style="flex:1;padding:4px 8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px;" placeholder="Nickname"/>
-      <button class="btn btn-secondary" onclick="renameClient()" style="padding:4px 10px;font-size:11px;">Save</button>
+      <input id="rename-input" value="${n.host || n.name}" style="flex:1;padding:4px 8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px;" placeholder="${t('map.nickname')}"/>
+      <button class="btn btn-secondary" onclick="renameClient()" style="padding:4px 10px;font-size:11px;">${t('btn.save')}</button>
     </div>`;
   }
 
@@ -352,26 +360,22 @@ function setupEventListeners() {
 }
 
 function onMouseMove(e: MouseEvent) {
-  if (dragNode) {
-    dragNode.x = (e.clientX - panX - dragOffX) / zoom + dragNode.x! - (dragNode.x! || 0);
-    dragNode.y = (e.clientY - panY - dragOffY) / zoom + dragNode.y! - (dragNode.y! || 0);
-
-    // Hmm, this is wrong. Let me fix:
-    // node.x is in SVG space. e.clientX is in screen space.
-    // SVG space = (screen - pan) / zoom
-    const node = dragNode;
-    const rect = document.querySelector(`[data-id="${node.id}"]`)?.getBoundingClientRect();
-    if (rect) {
-      const dx = (e.clientX - rect.left) / zoom;
-      const dy = (e.clientY - rect.top) / zoom;
-      node.x = (node.x || 0) + dx - dragOffX / zoom;
-      node.y = (node.y || 0) + dy - dragOffY / zoom;
-    }
+  if (isPanning) {
+    panX = e.clientX - panStartX;
+    panY = e.clientY - panStartY;
+    render();
+  } else if (dragNode) {
+    dragNode.x = (e.clientX - panX) / zoom - dragOffX / zoom;
+    dragNode.y = (e.clientY - panY) / zoom - dragOffY / zoom;
+    render();
   }
 }
 
 function onMouseUp() {
-  if (dragNode) {
+  if (isPanning) {
+    isPanning = false;
+    render();
+  } else if (dragNode) {
     positionCache[dragNode.id] = { x: dragNode.x!, y: dragNode.y! };
     savePositionCache();
     dragNode = null;
@@ -428,6 +432,25 @@ function resetLayout() {
   render();
 }
 
+function renameClient() {
+  if (!selectedNode || !selectedNode.mac) return;
+  const input = document.getElementById('rename-input') as HTMLInputElement;
+  if (!input) return;
+  const host = input.value.trim();
+  if (!host) return;
+  fetch('/api/clients/update_host', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mac: selectedNode.mac, host }),
+  }).then(r => {
+    if (!r.ok) throw new Error('rename failed');
+    selectedNode.name = host;
+    selectedNode.host = host;
+    updateSidebar();
+    render();
+  }).catch(() => {});
+}
+
 function toggleClients() {
   showClients = !showClients;
   render();
@@ -435,3 +458,8 @@ function toggleClients() {
 
 window.addEventListener('load', init);
 window.addEventListener('resize', () => { render(); });
+(window as any).setLang = setLang;
+(window as any).renameClient = renameClient;
+(window as any).toggleClients = toggleClients;
+(window as any).resetLayout = resetLayout;
+(window as any).searchNavigate = searchNavigate;

@@ -1,4 +1,3 @@
-// @ts-nocheck
     function setActiveLink(element) {
       document.querySelectorAll('.sidebar-link').forEach(link => {
         link.classList.remove('active');

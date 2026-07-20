@@ -7,23 +7,29 @@ import (
 	"sync"
 	"time"
 
-	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
-	"github.com/byte4geek/switch-dashboard/internal/server"
+	"github.com/eraiza0816/switch-dashboard/internal/history"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
+	"github.com/eraiza0816/switch-dashboard/internal/server"
 )
 
 type Poller struct {
-	cache    *server.Cache
-	client   *rtlplayground.Client
-	ip       string
-	name     string
-	model    string
-	interval int
-	mu       sync.Mutex
-	stopCh   chan struct{}
-	counters map[string]*CounterState
-	history  map[string]*History
-	notes    map[string]string
-	logger   *slog.Logger
+	cache        *server.Cache
+	client       *rtlplayground.Client
+	ip           string
+	name         string
+	model        string
+	interval     int
+	mu           sync.Mutex
+	stopCh       chan struct{}
+	counters     map[string]*CounterState
+	history      map[string]*History
+	notes        map[string]string
+	logger       *slog.Logger
+	historyStore *history.Store
+}
+
+func (p *Poller) SetHistoryStore(store *history.Store) {
+	p.historyStore = store
 }
 
 func New(cache *server.Cache, ip, name, model string, interval int) *Poller {
@@ -217,6 +223,11 @@ func (p *Poller) poll() {
 			p.history[histKey] = &History{}
 		}
 		p.history[histKey].Record(now, cumTX, cumRX, speedTX, speedRX, p.interval)
+
+		if p.historyStore != nil {
+			ts := time.Unix(0, int64(now*1e9))
+			p.historyStore.WriteSample(p.ip, itoa(int64(port)), ts, cumTX, cumRX, speedTX, speedRX)
+		}
 	}
 
 	swData := &server.SwitchData{

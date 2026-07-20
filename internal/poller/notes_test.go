@@ -3,8 +3,8 @@ package poller
 import (
 	"testing"
 
-	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
-	"github.com/byte4geek/switch-dashboard/internal/server"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
+	"github.com/eraiza0816/switch-dashboard/internal/server"
 )
 
 func TestNotesAttachedToPorts(t *testing.T) {

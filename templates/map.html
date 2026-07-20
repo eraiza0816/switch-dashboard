@@ -19,26 +19,30 @@
 </head>
 <body>
 <div class="header">
-  <h1>{{ .Title }} - Network Map</h1>
+  <h1>{{ .Title }} - <span data-i18n="map.title">Network Map</span></h1>
   <div class="nav-links">
-    <a href="/">Dashboard</a>
-    <a href="/map" class="active">Map</a>
-    <a href="/config">Config</a>
-    <a href="/backups">Backups</a>
-    <a href="/logs">Logs</a>
-    <a href="javascript:toggleClients()" style="font-size:11px;">Toggle Clients</a>
-    <a href="javascript:resetLayout()" style="font-size:11px;color:#d29922;">Reset Layout</a>
+    <a href="/" data-i18n="nav.dashboard">Dashboard</a>
+    <a href="/map" class="active" data-i18n="nav.map">Map</a>
+    <a href="/config" data-i18n="nav.config">Config</a>
+    <a href="/backups" data-i18n="nav.backups">Backups</a>
+    <a href="/logs" data-i18n="nav.logs">Logs</a>
+    <a href="javascript:toggleClients()" style="font-size:11px;" data-i18n="map.toggle_clients">Toggle Clients</a>
+    <a href="javascript:resetLayout()" style="font-size:11px;color:#d29922;" data-i18n="map.reset_layout">Reset Layout</a>
+    <select id="lang-select" style="margin-left:8px;padding:4px 6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:11px;cursor:pointer;" onchange="setLang(this.value)">
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
   </div>
 </div>
 
 <div style="position:absolute;top:70px;left:16px;z-index:10;width:240px;">
-  <input id="search-input" type="text" placeholder="Search nodes..." style="width:100%;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#c9d1d9;font-size:12px;">
+  <input id="search-input" type="text" placeholder="Search nodes..." data-i18n-placeholder="map.search_placeholder" style="width:100%;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#c9d1d9;font-size:12px;">
   <div id="search-results" style="background:#161b22;border:1px solid #30363d;border-radius:8px;margin-top:4px;"></div>
 </div>
 
 <div id="sidebar" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #30363d;">
-    <span style="font-size:13px;font-weight:600;color:#f0f6fc;">Details</span>
+    <span style="font-size:13px;font-weight:600;color:#f0f6fc;" data-i18n="map.details">Details</span>
     <button id="sidebar-close" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:18px;">&times;</button>
   </div>
   <div id="sidebar-content"></div>

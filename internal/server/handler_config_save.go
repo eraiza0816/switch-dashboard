@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
 )
 
 type saveConfigData struct {

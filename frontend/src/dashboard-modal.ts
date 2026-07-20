@@ -1,184 +1,155 @@
-// @ts-nocheck
-import { REFRESH_SECONDS, currentGraphIp, currentGraphPort, currentGraphRange, currentGraphSwitchName, currentGraphPortLabel, currentTransceiverIp, currentTransceiverPort, currentTransceiverSwitchName, formatBytes, formatBps, speedUnit } from './dashboard-utils';
+import { REFRESH_SECONDS, state, formatBytes, formatBps, formatPkts, speedClass, formatTime, formatNumber, parseHexPort } from './dashboard-utils';
 
 export function refreshTransceiver() {
-  if (currentTransceiverIp && currentTransceiverPort) {
-    openTransceiver(currentTransceiverIp, currentTransceiverPort, currentTransceiverSwitchName);
+  if (state.currentTransceiverIp && state.currentTransceiverPort) {
+    (window as any).openTransceiver(state.currentTransceiverIp, state.currentTransceiverPort, state.currentTransceiverSwitchName);
   }
 }
 
-export function openGraph(ip, port, name, label, totalTx = 0, totalRx = 0) {
-  currentGraphIp = ip;
-  currentGraphPort = port;
-  currentGraphSwitchName = name;
-  currentGraphPortLabel = label;
-  document.getElementById('graph-title').textContent = `Bandwidth - ${label} (${name})`;
-  document.getElementById('graph-stats').innerHTML = `
+export function openGraph(ip: string, port: string, name: string, label: string, totalTx = 0, totalRx = 0) {
+  state.currentGraphIp = ip;
+  state.currentGraphPort = port;
+  state.currentGraphSwitchName = name;
+  state.currentGraphPortLabel = label;
+  document.getElementById('graph-title')!.textContent = `Bandwidth - ${label} (${name})`;
+  document.getElementById('graph-stats')!.innerHTML = `
     <div class="info-item"><div class="label">Peak TX</div><div class="value" id="graph-peak-tx">-</div></div>
     <div class="info-item"><div class="label">Peak RX</div><div class="value" id="graph-peak-rx">-</div></div>
     <div class="info-item"><div class="label">Current TX</div><div class="value" id="graph-now-tx">-</div></div>
     <div class="info-item"><div class="label">Current RX</div><div class="value" id="graph-now-rx">-</div></div>
     <div class="info-item"><div class="label">Total TX</div><div class="value" id="graph-total-tx">${formatBytes(totalTx)}</div></div>
     <div class="info-item"><div class="label">Total RX</div><div class="value" id="graph-total-rx">${formatBytes(totalRx)}</div></div>`;
-  document.getElementById('graph-sub').textContent = `Cumulative traffic for port ${port} - updated every ${REFRESH_SECONDS}s`;
-  document.getElementById('graph-overlay').classList.add('active');
+  document.getElementById('graph-sub')!.textContent = `Cumulative traffic for port ${port} - updated every ${REFRESH_SECONDS}s`;
+  document.getElementById('graph-overlay')!.classList.add('active');
   renderGraph(ip, port);
 }
 
-export function setGraphRange(range) {
-  currentGraphRange = range;
+export function setGraphRange(range: string) {
+  state.currentGraphRange = range;
   document.querySelectorAll('.graph-tab').forEach(t => t.classList.remove('active'));
   const tab = document.querySelector(`.graph-tab[data-range="${range}"]`);
   if (tab) tab.classList.add('active');
-  if (currentGraphIp && currentGraphPort) renderGraph(currentGraphIp, currentGraphPort);
+  if (state.currentGraphIp && state.currentGraphPort) renderGraph(state.currentGraphIp, state.currentGraphPort);
 }
 
 export function closeGraph() {
-  document.getElementById('graph-overlay').classList.remove('active');
+  document.getElementById('graph-overlay')!.classList.remove('active');
 }
 
 export function toggleMaximizeGraph() {
-  const box = document.getElementById('graph-box');
-  const btn = document.getElementById('graph-maximize-btn');
-  if (box.style.maxWidth === 'none') {
-    box.style.maxWidth = '700px';
-    btn.textContent = '+';
+  const box = document.getElementById('graph-box')!;
+  box.classList.toggle('maximized');
+  const btn = document.getElementById('graph-maximize-btn')!;
+  if (box.classList.contains('maximized')) {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 1.5a.5.5 0 0 0-1 0v2h-2a.5.5 0 0 0 0 1h2.5a.5.5 0 0 0 .5-.5v-2.5zM11.5 1.5a.5.5 0 0 0-1 0v2.5a.5.5 0 0 0 .5.5h2.5a.5.5 0 0 0 0-1h-2v-2zM4.5 11.5v2a.5.5 0 0 0 1 0v-2.5a.5.5 0 0 0-.5-.5h-2.5a.5.5 0 0 0 0 1h2zM12.5 11.5h-2a.5.5 0 0 0-.5.5v2.5a.5.5 0 0 0 1 0v-2h2a.5.5 0 0 0 0-1z"/></svg>`;
+    btn.title = "Restore Size";
   } else {
-    box.style.maxWidth = 'none';
-    box.style.width = '95vw';
-    btn.textContent = '-';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 1 0v-2h2a.5.5 0 0 0 0-1h-2.5zM11.5 1a.5.5 0 0 0 0 1h2v2a.5.5 0 0 0 1 0v-3a.5.5 0 0 0-.5-.5h-2.5zM1 11.5a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 0-1h-2v-2a.5.5 0 0 0-1 0v3zM14 11.5a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 0 0 1h2v2a.5.5 0 0 0 1 0v-3z"/></svg>`;
+    btn.title = "Toggle Fullscreen";
+  }
+  if (state.currentGraphIp && state.currentGraphPort) {
+    renderGraph(state.currentGraphIp, state.currentGraphPort);
   }
 }
 
-export function renderGraph(ip, port) {
-  const range = currentGraphRange;
-  const svg = document.getElementById('graph-svg');
-  const W = svg.clientWidth || 600;
-  const H = 200;
-  const pad = { top: 10, right: 10, bottom: 20, left: 50 };
+function renderGraph(ip: string, port: string) {
+  const svg = document.getElementById('graph-svg')!;
+  const box = document.getElementById('graph-box')!;
+  const isMax = box.classList.contains('maximized');
+  const W = Math.max(500, box.clientWidth - (isMax ? 64 : 48));
+  let H = window.innerHeight * 0.35;
+  if (isMax) {
+    H = window.innerHeight - 250;
+  }
+  H = Math.max(240, H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = '';
+
+  const pad = { top: 20, bottom: 40, left: 70, right: 30 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
 
-  fetch(`/api/history?ip=${ip}&port=${port}&range=${range}`)
+  fetch(`/api/history?ip=${ip}&port=${port}&range=${state.currentGraphRange}`)
     .then(r => r.json())
     .then(data => {
-      const tx = data.tx || [];
-      const rx = data.rx || [];
-      const ts = data.timestamps || [];
-
-      let html = `<rect width="${W}" height="${H}" fill="#0d1117" rx="8"/>
-        <g transform="translate(${pad.left},${pad.top})">
-        <line x1="0" y1="0" x2="0" y2="${plotH}" stroke="#30363d" stroke-width="1"/>
-        <line x1="0" y1="${plotH}" x2="${plotW}" y2="${plotH}" stroke="#30363d" stroke-width="1"/>`;
-
-      if (!tx.length) {
-        html += `<text x="${plotW/2}" y="${plotH/2}" text-anchor="middle" fill="#b1bac4" font-size="14">No history data available for this range yet</text>`;
-        svg.innerHTML = html + '</g></svg>';
+      if (!data || !data.tx || data.tx.length < 2) {
+        svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#b1bac4" font-size="14">No history data available for this range yet</text>`;
+        document.getElementById('graph-peak-tx')!.textContent = '-';
+        document.getElementById('graph-peak-rx')!.textContent = '-';
+        document.getElementById('graph-now-tx')!.textContent = '-';
+        document.getElementById('graph-now-rx')!.textContent = '-';
         return;
       }
 
-      const allVals = [...tx, ...rx].filter(v => v > 0);
-      const maxVal = allVals.length ? Math.max(...allVals) * 1.1 : 1;
-      const stepX = plotW / (ts.length - 1 || 1);
+      const txPoints: number[] = data.tx;
+      const rxPoints: number[] = data.rx;
+      const tss: number[] = data.timestamps;
+      const len = txPoints.length;
 
-      // Grid lines
-      for (let i = 0; i <= 4; i++) {
-        const y = plotH - (plotH * i / 4);
-        html += `<line x1="0" y1="${y}" x2="${plotW}" y2="${y}" stroke="#21262d" stroke-width="1"/>`;
-        html += `<text x="-8" y="${y+3}" text-anchor="end" fill="#8b949e" font-size="9">${formatBps(maxVal * i / 4, speedUnit)}</text>`;
+      let maxVal = 0;
+      for (let i = 0; i < len; i++) {
+        if (txPoints[i] > maxVal) maxVal = txPoints[i];
+        if (rxPoints[i] > maxVal) maxVal = rxPoints[i];
+      }
+      if (maxVal === 0) maxVal = 1000;
+      maxVal *= 1.15;
+
+      const peakTx = Math.max(...txPoints);
+      const peakRx = Math.max(...rxPoints);
+      const nowTx = txPoints[len - 1];
+      const nowRx = rxPoints[len - 1];
+
+      document.getElementById('graph-peak-tx')!.textContent = formatBps(peakTx, state.speedUnit);
+      document.getElementById('graph-peak-rx')!.textContent = formatBps(peakRx, state.speedUnit);
+      document.getElementById('graph-now-tx')!.textContent = formatBps(nowTx, state.speedUnit);
+      document.getElementById('graph-now-rx')!.textContent = formatBps(nowRx, state.speedUnit);
+
+      const toX = (i: number) => pad.left + (i / (len - 1)) * plotW;
+      const toY = (v: number) => pad.top + plotH - (v / maxVal) * plotH;
+
+      let yTicks = 4;
+      let gridSvg = '';
+      for (let i = 0; i <= yTicks; i++) {
+        const v = (maxVal / yTicks) * i;
+        const y = toY(v);
+        gridSvg += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#21262d" stroke-width="1" stroke-dasharray="${i === 0 ? '0' : '4 4'}"/>`;
+        gridSvg += `<text x="${pad.left - 10}" y="${y + 4}" text-anchor="end" fill="#b1bac4" font-size="11" font-family="'SF Mono', Monaco, monospace">${formatBps(v, state.speedUnit)}</text>`;
       }
 
-      // TX line
-      let txPath = '';
-      let rxPath = '';
-      for (let i = 0; i < ts.length; i++) {
-        const x = i * stepX;
-        const txy = plotH - (tx[i] / maxVal) * plotH;
-        const rxy = plotH - (rx[i] / maxVal) * plotH;
-        txPath += (i === 0 ? 'M' : 'L') + x + ',' + txy;
-        rxPath += (i === 0 ? 'M' : 'L') + x + ',' + rxy;
+      let xTicks: number[] = [];
+      const tickCount = Math.min(5, len);
+      const step = Math.max(1, Math.floor((len - 1) / (tickCount - 1)));
+      for (let i = 0; i < len; i += step) {
+        xTicks.push(i);
+      }
+      if (xTicks[xTicks.length - 1] !== len - 1) {
+        xTicks.push(len - 1);
       }
 
-      html += `<path d="${txPath}" fill="none" stroke="#58a6ff" stroke-width="2"/>`;
-      html += `<path d="${rxPath}" fill="none" stroke="#3fb950" stroke-width="2"/>`;
+      const xTicksSvg = xTicks.map(idx => {
+        const x = toX(idx);
+        const date = new Date(tss[idx] * 1000);
+        let timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+        if (state.currentGraphRange === '24h') {
+          timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '<br>' + (date.getMonth()+1) + '/' + date.getDate();
+        }
+        return `<text x="${x}" y="${H - 5}" text-anchor="middle" fill="#b1bac4" font-size="10" font-family="'SF Mono', Monaco, monospace">${timeStr}</text>`;
+      }).join('');
 
-      // Area fill
-      html += `<path d="${txPath} L${(ts.length-1)*stepX},${plotH} L0,${plotH} Z" fill="rgba(88,166,255,0.08)"/>`;
-      html += `<path d="${rxPath} L${(ts.length-1)*stepX},${plotH} L0,${plotH} Z" fill="rgba(63,185,80,0.08)"/>`;
+      const lineLayer = `<path d="${txPoints.map((v, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(v)}`).join(' ')}" fill="none" stroke="#58a6ff" stroke-width="2"/>`;
+      const lineLayerRx = `<path d="${rxPoints.map((v, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(v)}`).join(' ')}" fill="none" stroke="#3fb950" stroke-width="2"/>`;
 
-      html += '</g>';
+      let tooltipRect = '';
+      if (len > 0) {
+        tooltipRect = `<rect id="hover-overlay-rect" x="${pad.left}" y="0" width="${plotW}" height="${H}" fill="transparent" style="cursor:crosshair"/>
+          <line id="hover-line" x1="0" y1="${pad.top}" x2="0" y2="${pad.top + plotH}" stroke="#58a6ff" stroke-width="1" style="display:none"/>
+          <circle id="hover-dot-tx" r="4" fill="#58a6ff" style="display:none"/>
+          <circle id="hover-dot-rx" r="4" fill="#3fb950" style="display:none"/>`;
+      }
 
-      // Stats
-      const peakTX = Math.max(...tx);
-      const peakRX = Math.max(...rx);
-      const nowTX = tx[tx.length - 1] || 0;
-      const nowRX = rx[rx.length - 1] || 0;
-
-      document.getElementById('graph-peak-tx').textContent = formatBps(peakTX, speedUnit);
-      document.getElementById('graph-peak-rx').textContent = formatBps(peakRX, speedUnit);
-      document.getElementById('graph-now-tx').textContent = formatBps(nowTX, speedUnit);
-      document.getElementById('graph-now-rx').textContent = formatBps(nowRX, speedUnit);
-
-      svg.innerHTML = html;
+      svg.innerHTML = gridSvg + lineLayer + lineLayerRx + xTicksSvg + tooltipRect;
     })
-    .catch(() => {
-      svg.innerHTML = `<rect width="${W}" height="${H}" fill="#0d1117" rx="8"/>
-        <text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#f85149" font-size="14">Failed to load history</text>`;
-    });
-}
-
-export function closeTransceiver() {
-  document.getElementById('transceiver-overlay').classList.remove('open');
-}
-
-export function openTransceiver(ip, port, switchName) {
-  currentTransceiverIp = ip;
-  currentTransceiverPort = port;
-  currentTransceiverSwitchName = switchName;
-
-  const overlay = document.getElementById('transceiver-overlay');
-  document.getElementById('transceiver-title').textContent = `Port ${port} SFP+ Transceiver Status`;
-  document.getElementById('transceiver-sub').textContent = `DDMI Diagnostics & Telemetry (${switchName})`;
-  document.getElementById('transceiver-content').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:12px;color:#8b949e;"><div class="spinner"></div><span>Loading transceiver data...</span></div>`;
-  overlay.classList.add('open');
-
-  fetch(`/api/switches/${ip}/transceiver`)
-    .then(r => { if (!r.ok) throw new Error('Request failed'); return r.json(); })
-    .then(data => renderTransceiverData(data, document.getElementById('transceiver-content')))
     .catch(err => {
-      document.getElementById('transceiver-content').innerHTML =
-        `<div style="margin:20px 0;font-size:13px;color:#8b949e;"><strong>No SFP module detected</strong><br><span style="opacity:0.8;font-size:11px;">${err.message}</span></div>`;
+      svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#f85149" font-size="14">Error: ${err.message}</text>`;
     });
-}
-
-export function renderTransceiverData(data, container) {
-  function parseVal(valStr) {
-    if (!valStr) return 0;
-    const m = valStr.toString().match(/[-+]?[0-9]*\.?[0-9]+/);
-    return m ? parseFloat(m[0]) : 0;
-  }
-
-  const temp = parseVal(data.temperature);
-  const volt = parseVal(data.voltage);
-  const curr = parseVal(data.current);
-  let txDbm = -99, rxDbm = -99;
-  if (data.tx_power && !data.tx_power.includes('-inf')) txDbm = parseVal(data.tx_power);
-  if (data.rx_power && !data.rx_power.includes('-inf')) rxDbm = parseVal(data.rx_power);
-
-  const bar = (val, max, color) =>
-    `<div class="telemetry-bar"><div class="telemetry-fill" style="width:${Math.min(100, Math.max(0, (val/max)*100))}%;background:${color}"></div></div>`;
-
-  container.innerHTML = `
-    <div class="sfp-grid">
-      <div class="sfp-item"><div class="label">Vendor</div><div class="value">${data.vendor_name || '-'}</div></div>
-      <div class="sfp-item"><div class="label">Model</div><div class="value">${data.vendor_pn || '-'}</div></div>
-      <div class="sfp-item"><div class="label">Serial</div><div class="value" style="font-size:11px;">${data.vendor_sn || '-'}</div></div>
-      <div class="sfp-item"><div class="label">Type</div><div class="value">${data.transceiver_type || '-'}</div></div>
-      <div class="sfp-item"><div class="label">Temperature</div><div class="value" style="color:${temp > 65 ? '#f85149' : temp > 55 ? '#d29922' : '#3fb950'}">${data.temperature || '-'}</div>${bar(temp, 80, temp > 65 ? '#f85149' : temp > 55 ? '#d29922' : '#3fb950')}</div>
-      <div class="sfp-item"><div class="label">Voltage</div><div class="value" style="color:${volt > 3.5 || volt < 3.1 ? '#f85149' : '#3fb950'}">${data.voltage || '-'}</div>${bar(volt - 2.8, 1, volt > 3.5 || volt < 3.1 ? '#f85149' : '#3fb950')}</div>
-      <div class="sfp-item"><div class="label">Bias Current</div><div class="value" style="color:${curr > 30 ? '#f85149' : '#3fb950'}">${data.current || '-'}</div>${bar(curr, 40, curr > 30 ? '#f85149' : '#3fb950')}</div>
-      <div class="sfp-item"><div class="label">TX Power</div><div class="value" style="color:${txDbm > 3 || txDbm < -10 ? '#f85149' : '#3fb950'}">${data.tx_power || '-'}</div>${bar(txDbm + 10, 15, txDbm > 3 || txDbm < -10 ? '#f85149' : '#3fb950')}</div>
-      <div class="sfp-item"><div class="label">RX Power</div><div class="value" style="color:${rxDbm > 3 || rxDbm < -15 ? '#f85149' : '#3fb950'}">${data.rx_power || '-'}</div>${bar(rxDbm + 15, 20, rxDbm > 3 || rxDbm < -15 ? '#f85149' : '#3fb950')}</div>
-    </div>
-    <p style="font-size:10px;color:#8b949e;margin-top:12px;">DDMI telemetry reads directly from SFP module registers.</p>`;
 }

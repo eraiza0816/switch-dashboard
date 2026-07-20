@@ -1,24 +1,24 @@
-var H=document.createElement("style");H.innerText=`
+var s=null,a=null,i=document.createElement("style");i.innerText=`
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-`;document.head.appendChild(H);document.addEventListener("DOMContentLoaded",O);async function O(){let x=document.getElementById("table-wrapper");try{let q=await fetch("/api/backups");if(!q.ok)throw Error("HTTP error "+q.status);let z=await q.json();if(z.error){G("Error loading backups: "+z.error),F(z.error);return}if(!z||z.length===0){Q();return}P(z)}catch(q){G("Connection error: "+q.message),F(q.message)}}function P(x){let q=document.getElementById("table-wrapper"),z=x.map((v)=>{return`
-      <tr id="row-${v.filename.replace(/\./g,"_")}">
-        <td class="switch-ip">${v.ip}</td>
-        <td class="timestamp">${v.datetime}</td>
-        <td class="filename">${v.filename}</td>
-        <td class="file-size">${v.size_str}</td>
+`;document.head.appendChild(i);document.addEventListener("DOMContentLoaded",c);async function c(){let e=document.getElementById("table-wrapper");try{let t=await fetch("/api/backups");if(!t.ok)throw Error("HTTP error "+t.status);let n=await t.json();if(n.error){r("Error loading backups: "+n.error),l(n.error);return}if(!n||n.length===0){d();return}y(n)}catch(t){r("Connection error: "+t.message),l(t.message)}}function y(e){let t=document.getElementById("table-wrapper"),n=e.map((o)=>{return`
+      <tr id="row-${o.filename.replace(/\./g,"_")}">
+        <td class="switch-ip">${o.ip}</td>
+        <td class="timestamp">${o.datetime}</td>
+        <td class="filename">${o.filename}</td>
+        <td class="file-size">${o.size_str}</td>
         <td style="white-space: nowrap;">
-          <a class="btn-action btn-download" href="/api/backups/${v.filename}/download" title="Download backup file">
+          <a class="btn-action btn-download" href="/api/backups/${o.filename}/download" title="Download backup file">
             Download
           </a>
-          <button class="btn-action btn-delete" onclick="confirmDelete('${v.filename}', this)" title="Delete backup file">
+          <button class="btn-action btn-delete" onclick="confirmDelete('${o.filename}', this)" title="Delete backup file">
             Delete
           </button>
         </td>
       </tr>
-    `}).join("");q.innerHTML=`
+    `}).join("");t.innerHTML=`
     <div class="table-container">
       <table>
         <thead>
@@ -31,24 +31,24 @@ var H=document.createElement("style");H.innerText=`
           </tr>
         </thead>
         <tbody>
-          ${z}
+          ${n}
         </tbody>
       </table>
     </div>
-  `}function Q(){let x=document.getElementById("table-wrapper");x.innerHTML=`
+  `}function d(){let e=document.getElementById("table-wrapper");e.innerHTML=`
     <div class="empty-state">
       <div class="empty-icon" style="font-size:24px;color:#30363d;">-</div>
       <h3>No backups archived</h3>
       <p>Configure your switches in the settings and press the "Backup" action next to any switch IP in the main dashboard to store automated binary backups here.</p>
       <a href="/" style="margin-top: 8px;">&larr; Go to Dashboard</a>
     </div>
-  `}function F(x){let q=document.getElementById("table-wrapper");q.innerHTML=`
+  `}function l(e){let t=document.getElementById("table-wrapper");t.innerHTML=`
     <div class="empty-state" style="color: #ff7b72;">
-      <div class="empty-icon">⚠️</div>
+      <div class="empty-icon">-</div>
       <h3>System Error</h3>
-      <p>${x}</p>
+      <p>${e}</p>
       <button onclick="loadBackups()" class="btn-action btn-download" style="margin-top: 14px; padding: 10px 20px;">
         Retry Connection
       </button>
     </div>
-  `}function G(x){R(x,"error")}function R(x,q,z){let v=document.getElementById("toast-box"),J=document.getElementById("toast-icon"),L=document.getElementById("toast-message");v.className=`toast ${q}`,J.textContent=z,L.textContent=x,v.classList.add("show"),setTimeout(()=>{v.classList.remove("show")},4000)}
+  `}function w(e,t){s=e,a=t.closest("tr"),document.getElementById("modal-filename-display").textContent=e,document.getElementById("delete-modal").classList.add("open")}function m(){document.getElementById("delete-modal").classList.remove("open"),s=null,a=null}async function f(){if(!s)return;let e=document.getElementById("modal-confirm-btn");e.disabled=!0,e.textContent="Deleting...";try{let t=await fetch(`/api/backups/${encodeURIComponent(s)}`,{method:"DELETE"}),n=await t.json();if(t.ok&&n.status==="ok"){if(g("Backup deleted successfully"),a)a.classList.add("fade-out"),setTimeout(()=>{if(a.remove(),document.querySelectorAll("tbody tr").length===0)d()},400)}else r("Delete failed: "+(n.error||"Unknown error"))}catch(t){r("Error connecting to server: "+t.message)}finally{e.disabled=!1,e.textContent="Delete Permanently",m()}}function g(e){u(e,"success")}function r(e){u(e,"error")}function u(e,t,n=""){let o=document.getElementById("toast-box"),p=document.getElementById("toast-icon"),h=document.getElementById("toast-message");o.className=`toast ${t}`,p.textContent=n,h.textContent=e,o.classList.add("show"),setTimeout(()=>{o.classList.remove("show")},4000)}window.loadBackups=c;window.confirmDelete=w;window.closeDeleteModal=m;window.executeDelete=f;

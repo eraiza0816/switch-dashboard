@@ -1,4 +1,3 @@
-// @ts-nocheck
 interface Window {
   __DATA__: {
     refresh: number;

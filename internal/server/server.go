@@ -1,13 +1,16 @@
 package server
 
 import (
+	"encoding/json"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
+	"github.com/eraiza0816/switch-dashboard/internal/history"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -15,12 +18,55 @@ import (
 var Version = "0.1.0"
 
 type Server struct {
-	Router   *chi.Mux
-	Cache    *Cache
-	Config   ConfigProvider
-	Logger   Logger
-	tmpl     *template.Template
-	staticFS fs.FS
+	Router          *chi.Mux
+	Cache           *Cache
+	Config          ConfigProvider
+	Logger          Logger
+	tmpl            *template.Template
+	staticFS        fs.FS
+	ClientHosts     map[string]string
+	ClientHostsPath string
+	clientHostsMu   sync.RWMutex
+	HistoryStore    *history.Store
+}
+
+func (s *Server) ClientHost(mac string) string {
+	s.clientHostsMu.RLock()
+	defer s.clientHostsMu.RUnlock()
+	if s.ClientHosts == nil {
+		return ""
+	}
+	return s.ClientHosts[mac]
+}
+
+func (s *Server) loadClientHosts() {
+	if s.ClientHostsPath == "" {
+		return
+	}
+	data, err := os.ReadFile(s.ClientHostsPath)
+	if err != nil {
+		return
+	}
+	var hosts map[string]string
+	if err := json.Unmarshal(data, &hosts); err != nil {
+		return
+	}
+	s.clientHostsMu.Lock()
+	s.ClientHosts = hosts
+	s.clientHostsMu.Unlock()
+}
+
+func (s *Server) saveClientHosts() {
+	if s.ClientHostsPath == "" {
+		return
+	}
+	s.clientHostsMu.RLock()
+	data, err := json.MarshalIndent(s.ClientHosts, "", "  ")
+	s.clientHostsMu.RUnlock()
+	if err != nil {
+		return
+	}
+	os.WriteFile(s.ClientHostsPath, data, 0644)
 }
 
 type ConfigProvider interface {
@@ -63,11 +109,12 @@ func (s *simpleConfig) Version() string                  { return s.version }
 
 func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, staticFS fs.FS) *Server {
 	s := &Server{
-		Router:   chi.NewRouter(),
-		Cache:    cache,
-		Config:   cfg,
-		Logger:   logger,
-		staticFS: staticFS,
+		Router:      chi.NewRouter(),
+		Cache:       cache,
+		Config:      cfg,
+		Logger:      logger,
+		staticFS:    staticFS,
+		ClientHosts: make(map[string]string),
 	}
 
 	s.Router.Use(middleware.Logger)
@@ -76,6 +123,7 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, st
 
 	s.tmpl = loadTemplatesWithFS(tmplFS)
 	s.registerRoutes()
+	s.loadClientHosts()
 	return s
 }
 

@@ -36,6 +36,44 @@ setLang('ja');
 assert(t('sfp.title', { p: 5 }) === 'ポート5 SFP+ トランシーバー診断', 'ja: SFP title with port');
 assert(t('mac.entries', { n: 3 }) === '3件', 'ja: MAC entries count');
 
+// Test map translations (English)
+setLang('en');
+assert(t('map.title') === 'Network Map', 'en: map.title');
+assert(t('map.switch') === 'Switch', 'en: map.switch');
+assert(t('map.client') === 'Client', 'en: map.client');
+assert(t('map.internet') === 'Internet', 'en: map.internet');
+assert(t('map.router') === 'Router', 'en: map.router');
+assert(t('map.repeater') === 'Repeater', 'en: map.repeater');
+assert(t('map.unmanaged_switch') === 'Unmanaged Switch', 'en: map.unmanaged_switch');
+assert(t('map.search_placeholder') === 'Search nodes...', 'en: map.search_placeholder');
+assert(t('map.details') === 'Details', 'en: map.details');
+assert(t('map.links') === 'Links', 'en: map.links');
+assert(t('map.nickname') === 'Nickname', 'en: map.nickname');
+assert(t('map.toggle_clients') === 'Toggle Clients', 'en: map.toggle_clients');
+assert(t('map.reset_layout') === 'Reset Layout', 'en: map.reset_layout');
+assert(t('map.failed_load') === 'Failed to load topology', 'en: map.failed_load');
+assert(t('map.loading') === 'Loading topology...', 'en: map.loading');
+assert(t('map.ip') === 'IP', 'en: map.ip');
+
+// Test map translations (Japanese)
+setLang('ja');
+assert(t('map.title') === 'ネットワークマップ', 'ja: map.title');
+assert(t('map.switch') === 'スイッチ', 'ja: map.switch');
+assert(t('map.client') === 'クライアント', 'ja: map.client');
+assert(t('map.internet') === 'インターネット', 'ja: map.internet');
+assert(t('map.router') === 'ルーター', 'ja: map.router');
+assert(t('map.repeater') === 'リピーター', 'ja: map.repeater');
+assert(t('map.unmanaged_switch') === 'アンマネージドスイッチ', 'ja: map.unmanaged_switch');
+assert(t('map.search_placeholder') === 'ノードを検索...', 'ja: map.search_placeholder');
+assert(t('map.details') === '詳細', 'ja: map.details');
+assert(t('map.links') === 'リンク', 'ja: map.links');
+assert(t('map.nickname') === 'ニックネーム', 'ja: map.nickname');
+assert(t('map.toggle_clients') === 'クライアント表示切替', 'ja: map.toggle_clients');
+assert(t('map.reset_layout') === 'レイアウトリセット', 'ja: map.reset_layout');
+assert(t('map.failed_load') === 'トポロジーの読み込みに失敗しました', 'ja: map.failed_load');
+assert(t('map.loading') === 'トポロジーを読み込み中...', 'ja: map.loading');
+assert(t('map.ip') === 'IP', 'ja: map.ip');
+
 // Test language switching
 setLang('en');
 assert(getLang() === 'en', 'getLang returns en after set');

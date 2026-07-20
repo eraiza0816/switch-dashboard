@@ -1,8 +1,6 @@
-// @ts-nocheck
 let fileToDelete = null;
 let rowToDelete = null;
 
-// CSS Keyframes injection for spin animation
 const styleSheet = document.createElement("style");
 styleSheet.innerText = `
   @keyframes spin {
@@ -97,7 +95,7 @@ function renderErrorState(msg) {
   const wrapper = document.getElementById("table-wrapper");
   wrapper.innerHTML = `
     <div class="empty-state" style="color: #ff7b72;">
-      <div class="empty-icon">⚠️</div>
+      <div class="empty-icon">-</div>
       <h3>System Error</h3>
       <p>${msg}</p>
       <button onclick="loadBackups()" class="btn-action btn-download" style="margin-top: 14px; padding: 10px 20px;">
@@ -124,7 +122,7 @@ function closeDeleteModal() {
 async function executeDelete() {
   if (!fileToDelete) return;
   
-  const confirmBtn = document.getElementById("modal-confirm-btn");
+  const confirmBtn = document.getElementById("modal-confirm-btn") as HTMLButtonElement;
   confirmBtn.disabled = true;
   confirmBtn.textContent = "Deleting...";
   
@@ -137,12 +135,10 @@ async function executeDelete() {
     if (res.ok && data.status === "ok") {
       showSuccessToast("Backup deleted successfully");
       
-      // Animate row deletion
       if (rowToDelete) {
         rowToDelete.classList.add("fade-out");
         setTimeout(() => {
           rowToDelete.remove();
-          // Check if table is now empty
           const rows = document.querySelectorAll("tbody tr");
           if (rows.length === 0) {
             renderEmptyState();
@@ -161,19 +157,18 @@ async function executeDelete() {
   }
 }
 
-// Toast Notifications helper
-function showSuccessToast(message) {
+function showSuccessToast(message: string) {
   showToast(message, "success");
 }
 
-function showErrorToast(message) {
+function showErrorToast(message: string) {
   showToast(message, "error");
 }
 
-function showToast(message, type, icon) {
-  const toast = document.getElementById("toast-box");
-  const toastIcon = document.getElementById("toast-icon");
-  const toastMsg = document.getElementById("toast-message");
+function showToast(message: string, type: string, icon = "") {
+  const toast = document.getElementById("toast-box")!;
+  const toastIcon = document.getElementById("toast-icon")!;
+  const toastMsg = document.getElementById("toast-message")!;
   
   toast.className = `toast ${type}`;
   toastIcon.textContent = icon;
@@ -184,3 +179,9 @@ function showToast(message, type, icon) {
     toast.classList.remove("show");
   }, 4000);
 }
+
+(window as any).loadBackups = loadBackups;
+(window as any).confirmDelete = confirmDelete;
+(window as any).closeDeleteModal = closeDeleteModal;
+(window as any).executeDelete = executeDelete;
+export {};

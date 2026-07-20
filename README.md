@@ -2,7 +2,7 @@
 
 A real-time monitoring dashboard for switches running **RTLPlayground** firmware (RTL8372/RTL8373 based 2.5GbE switches). Written in Go, served as a single binary.
 
-![Dashboard](https://raw.githubusercontent.com/byte4geek/switch-dashboard/refs/heads/main/images/dashboard.png)
+![Dashboard](https://raw.githubusercontent.com/eraiza0816/switch-dashboard/refs/heads/main/images/dashboard.png)
 
 ## Features
 

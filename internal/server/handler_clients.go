@@ -14,6 +14,19 @@ func (s *Server) handleAPIUpdateHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
 		return
 	}
+	if req.MAC == "" {
+		http.Error(w, `{"error":"mac required"}`, http.StatusBadRequest)
+		return
+	}
+	s.clientHostsMu.Lock()
+	if s.ClientHosts == nil {
+		s.ClientHosts = make(map[string]string)
+	}
+	s.ClientHosts[req.MAC] = req.Host
+	s.clientHostsMu.Unlock()
+
+	s.saveClientHosts()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

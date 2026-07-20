@@ -320,6 +320,88 @@ func TestCmdEndpoint(t *testing.T) {
 	}
 }
 
+func TestAPIUpdateHost(t *testing.T) {
+	s := newTestServer()
+
+	// Save a host override for a MAC
+	body := `{"mac":"AA:BB:CC:DD:EE:01","host":"MyDevice"}`
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/clients/update_host", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// Verify topology shows the override
+	w2, r2 := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/topology", nil)
+	s.Router.ServeHTTP(w2, r2)
+	var topo Topology
+	if err := json.Unmarshal(w2.Body.Bytes(), &topo); err != nil {
+		t.Fatalf("unmarshal topology: %v", err)
+	}
+	found := false
+	for _, n := range topo.Nodes {
+		if n.MAC == "AA:BB:CC:DD:EE:01" {
+			found = true
+			if n.Name != "MyDevice" {
+				t.Fatalf("expected name 'MyDevice', got %q", n.Name)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("client node AA:BB:CC:DD:EE:01 not found in topology")
+	}
+}
+
+func TestClientHostPersistence(t *testing.T) {
+	path := t.TempDir() + "/clients.json"
+
+	cache1 := NewCache()
+	cache1.UpdateSwitch("192.168.1.1", &SwitchData{
+		Name: "Test Switch", IP: "192.168.1.1", Model: "RTLPlayground",
+		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
+		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
+	})
+	s1 := NewServer(cache1, testConfig{}, testLogger{}, nil, nil)
+	s1.ClientHostsPath = path
+	body := `{"mac":"AA:BB:CC:DD:EE:01","host":"MyDevice"}`
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/clients/update_host", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	s1.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("save: expected 200, got %d", w.Code)
+	}
+
+	// Create a new server and load from file
+	cache2 := NewCache()
+	cache2.UpdateSwitch("192.168.1.1", &SwitchData{
+		Name: "Test Switch", IP: "192.168.1.1", Model: "RTLPlayground",
+		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
+		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
+	})
+	s2 := NewServer(cache2, testConfig{}, testLogger{}, nil, nil)
+	s2.ClientHostsPath = path
+	s2.loadClientHosts()
+
+	w2, r2 := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/topology", nil)
+	s2.Router.ServeHTTP(w2, r2)
+	var topo Topology
+	json.Unmarshal(w2.Body.Bytes(), &topo)
+	var node *TopologyNode
+	for i := range topo.Nodes {
+		if topo.Nodes[i].MAC == "AA:BB:CC:DD:EE:01" {
+			node = &topo.Nodes[i]
+			break
+		}
+	}
+	if node == nil {
+		t.Fatal("client node not found after reload")
+	}
+	if node.Name != "MyDevice" {
+		t.Fatalf("expected MyDevice after reload, got %s", node.Name)
+	}
+}
+
 func TestHTMLPages(t *testing.T) {
 	s := newTestServer()
 	for _, path := range []string{"/", "/logs", "/backups", "/config", "/api-docs"} {

@@ -5,11 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/byte4geek/switch-dashboard/internal/config"
-	"github.com/byte4geek/switch-dashboard/internal/poller"
-	"github.com/byte4geek/switch-dashboard/internal/rtlplayground"
-	"github.com/byte4geek/switch-dashboard/internal/server"
+	"github.com/eraiza0816/switch-dashboard/internal/config"
+	"github.com/eraiza0816/switch-dashboard/internal/history"
+	"github.com/eraiza0816/switch-dashboard/internal/poller"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
+	"github.com/eraiza0816/switch-dashboard/internal/server"
 )
 
 type appConfig struct {
@@ -64,7 +66,29 @@ func main() {
 		version:            "0.1.0",
 	}
 
+	// Create history store (DuckDB)
+	histStore, err := history.NewStore("history.duckdb")
+	if err != nil {
+		logger.Warn("cannot open history store, history will be disabled", "error", err)
+	}
+	if histStore != nil {
+		if err := histStore.Retain(24 * time.Hour); err != nil {
+			logger.Warn("history retention cleanup failed", "error", err)
+		}
+		// Periodic retention cleanup every hour
+		go func() {
+			for {
+				time.Sleep(1 * time.Hour)
+				if err := histStore.Retain(24 * time.Hour); err != nil {
+					logger.Warn("history retention cleanup failed", "error", err)
+				}
+			}
+		}()
+	}
+
 	srv := server.NewServer(cache, cfgProvider, al, nil, mustStaticFS())
+	srv.HistoryStore = histStore
+	srv.ClientHostsPath = "clients.json"
 
 	// Pass notes from config to poller
 	notes := cfg.Notes
@@ -74,7 +98,7 @@ func main() {
 
 	// Seed mock data immediately so the UI has something to show
 	for _, sw := range cfg.ActiveSwitches() {
-		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes)
+		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore)
 	}
 
 	// Try connecting to real switches in the background
@@ -98,7 +122,7 @@ func main() {
 			}
 			logger.Info("connected, switching to live data", "ip", ip, "model", info.HWVer)
 
-			startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes)
+			startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore)
 		}()
 	}
 
@@ -110,15 +134,24 @@ func main() {
 	if err := http.ListenAndServe(addr, srv.Router); err != nil {
 		logger.Error("server failed", "error", err)
 	}
+	if histStore != nil {
+		histStore.Close()
+	}
 }
 
-func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string) {
+func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store) {
 	p := poller.NewWithNotes(cache, ip, name, model, interval, notes)
+	if histStore != nil {
+		p.SetHistoryStore(histStore)
+	}
 	p.Start()
 }
 
-func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string) {
+func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store) {
 	p := poller.NewWithClientAndNotes(cache, client, ip, name, model, interval, notes)
+	if histStore != nil {
+		p.SetHistoryStore(histStore)
+	}
 	p.Start()
 }
 

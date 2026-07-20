@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export type Lang = 'en' | 'ja';
 
 const STORAGE_KEY = 'dashboard_lang';
@@ -111,6 +109,19 @@ const translations: Record<Lang, Record<string, string>> = {
     'map.title': 'Network Map',
     'map.switch': 'Switch',
     'map.client': 'Client',
+    'map.internet': 'Internet',
+    'map.router': 'Router',
+    'map.repeater': 'Repeater',
+    'map.unmanaged_switch': 'Unmanaged Switch',
+    'map.search_placeholder': 'Search nodes...',
+    'map.details': 'Details',
+    'map.links': 'Links',
+    'map.nickname': 'Nickname',
+    'map.toggle_clients': 'Toggle Clients',
+    'map.reset_layout': 'Reset Layout',
+    'map.failed_load': 'Failed to load topology',
+    'map.loading': 'Loading topology...',
+    'map.ip': 'IP',
 
     'footer.back': 'Back to Dashboard',
     'footer.api': 'API Reference',
@@ -238,6 +249,19 @@ const translations: Record<Lang, Record<string, string>> = {
     'map.title': 'ネットワークマップ',
     'map.switch': 'スイッチ',
     'map.client': 'クライアント',
+    'map.internet': 'インターネット',
+    'map.router': 'ルーター',
+    'map.repeater': 'リピーター',
+    'map.unmanaged_switch': 'アンマネージドスイッチ',
+    'map.search_placeholder': 'ノードを検索...',
+    'map.details': '詳細',
+    'map.links': 'リンク',
+    'map.nickname': 'ニックネーム',
+    'map.toggle_clients': 'クライアント表示切替',
+    'map.reset_layout': 'レイアウトリセット',
+    'map.failed_load': 'トポロジーの読み込みに失敗しました',
+    'map.loading': 'トポロジーを読み込み中...',
+    'map.ip': 'IP',
 
     'footer.back': 'ダッシュボードに戻る',
     'footer.api': 'APIリファレンス',
@@ -316,7 +340,6 @@ function updateUILang() {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) (el as HTMLInputElement).placeholder = t(key);
   });
-  document.title = t('nav.dashboard');
 }
 
 // Run on load (skip in test environments)
