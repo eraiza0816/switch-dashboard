@@ -54,6 +54,11 @@ assert(t('map.reset_layout') === 'Reset Layout', 'en: map.reset_layout');
 assert(t('map.failed_load') === 'Failed to load topology', 'en: map.failed_load');
 assert(t('map.loading') === 'Loading topology...', 'en: map.loading');
 assert(t('map.ip') === 'IP', 'en: map.ip');
+assert(t('map.bulk_rename') === 'Bulk Rename', 'en: map.bulk_rename');
+assert(t('map.bulk_rename_title') === 'Edit Client Names', 'en: map.bulk_rename_title');
+assert(t('map.bulk_rename_saved') === 'Names saved', 'en: map.bulk_rename_saved');
+assert(t('map.bulk_save') === 'Save All', 'en: map.bulk_save');
+assert(t('map.bulk_close') === 'Close', 'en: map.bulk_close');
 
 // Test map translations (Japanese)
 setLang('ja');
@@ -73,6 +78,11 @@ assert(t('map.reset_layout') === 'レイアウトリセット', 'ja: map.reset_l
 assert(t('map.failed_load') === 'トポロジーの読み込みに失敗しました', 'ja: map.failed_load');
 assert(t('map.loading') === 'トポロジーを読み込み中...', 'ja: map.loading');
 assert(t('map.ip') === 'IP', 'ja: map.ip');
+assert(t('map.bulk_rename') === '一括リネーム', 'ja: map.bulk_rename');
+assert(t('map.bulk_rename_title') === 'クライアント名の編集', 'ja: map.bulk_rename_title');
+assert(t('map.bulk_rename_saved') === '名前を保存しました', 'ja: map.bulk_rename_saved');
+assert(t('map.bulk_save') === 'すべて保存', 'ja: map.bulk_save');
+assert(t('map.bulk_close') === '閉じる', 'ja: map.bulk_close');
 
 // Test language switching
 setLang('en');

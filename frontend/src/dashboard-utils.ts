@@ -73,3 +73,18 @@ export function parseHexPort(portStr: string): string | number {
   const v = parseInt(portStr);
   return isNaN(v) ? portStr : v;
 }
+
+export function showToast(message: string, type: string, icon = "") {
+  const toast = document.getElementById("toast-box")!;
+  const toastIcon = document.getElementById("toast-icon")!;
+  const toastMsg = document.getElementById("toast-message")!;
+
+  toast.className = `toast ${type}`;
+  toastIcon.textContent = icon;
+  toastMsg.textContent = message;
+
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 4000);
+}

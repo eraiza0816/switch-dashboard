@@ -1,3 +1,5 @@
+import { showToast } from './dashboard-utils';
+
 let pollingInterval = null;
 let isPollingActive = true;
 let isUserScrolledUp = false;
@@ -64,7 +66,7 @@ async function fetchLogs() {
     const data = await res.json();
     
     if (data.error) {
-      showErrorToast("Failed to fetch logs: " + data.error);
+      showToast("Failed to fetch logs: " + data.error, "error");
       return;
     }
     
@@ -201,10 +203,10 @@ async function updateLogLevel(level: string) {
       showToast(`Log level dynamically changed to ${level}`, "success");
       setTimeout(fetchLogs, 400);
     } else {
-      showErrorToast("Failed to update log level: " + (data.error || "Unknown error"));
+      showToast("Failed to update log level: " + (data.error || "Unknown error"), "error");
     }
   } catch (err) {
-    showErrorToast("Network error: " + err.message);
+    showToast("Network error: " + err.message, "error");
   }
 }
 
@@ -224,10 +226,10 @@ async function clearLogs() {
       document.getElementById("empty-state")!.style.display = "flex";
       document.getElementById("logs-container")!.style.display = "none";
     } else {
-      showErrorToast("Failed to clear logs: " + (data.error || "Unknown error"));
+      showToast("Failed to clear logs: " + (data.error || "Unknown error"), "error");
     }
   } catch (err) {
-    showErrorToast("Network error: " + err.message);
+    showToast("Network error: " + err.message, "error");
   }
 }
 
@@ -248,28 +250,7 @@ function escapeHtml(unsafe: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function showSuccessToast(message: string) {
-  showToast(message, "success");
-}
 
-function showErrorToast(message: string) {
-  showToast(message, "error");
-}
-
-function showToast(message: string, type: string, icon = "") {
-  const toast = document.getElementById("toast-box")!;
-  const toastIcon = document.getElementById("toast-icon")!;
-  const toastMsg = document.getElementById("toast-message")!;
-  
-  toast.className = `toast ${type}`;
-  toastIcon.textContent = icon;
-  toastMsg.textContent = message;
-  
-  toast.classList.add("show");
-  setTimeout(() => {
-    toast.classList.remove("show");
-  }, 4000);
-}
 
 (window as any).startPolling = startPolling;
 (window as any).stopPolling = stopPolling;

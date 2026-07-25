@@ -246,6 +246,60 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 					},
 				},
 			},
+			"/api/clients/update_host": map[string]any{
+				"post": map[string]any{
+					"summary": "Override client hostname in topology",
+					"description": "Persists a MAC-to-hostname mapping so the topology graph shows a custom nickname for a client device.",
+					"requestBody": map[string]any{
+						"content": map[string]any{
+							"application/json": map[string]any{
+								"schema": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"mac":  map[string]any{"type": "string"},
+										"host": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Hostname override saved"},
+					},
+				},
+			},
+			"/api/layout_positions": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get topology node layout positions",
+					"description": "Returns per-node x/y positions saved by the interactive map editor.",
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Position map"},
+					},
+				},
+				"post": map[string]any{
+					"summary": "Save topology node layout positions",
+					"description": "Persists the current interactive map node positions to the server.",
+					"requestBody": map[string]any{
+						"content": map[string]any{
+							"application/json": map[string]any{
+								"schema": map[string]any{
+									"type": "object",
+									"additionalProperties": map[string]any{
+										"type": "object",
+										"properties": map[string]any{
+											"x": map[string]any{"type": "number"},
+											"y": map[string]any{"type": "number"},
+										},
+									},
+								},
+							},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Positions saved"},
+					},
+				},
+			},
 		},
 		"components": map[string]any{
 			"schemas": map[string]any{

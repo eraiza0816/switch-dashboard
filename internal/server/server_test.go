@@ -147,6 +147,27 @@ func TestAPIHistory(t *testing.T) {
 	}
 }
 
+func TestAPIHistoryNilStore(t *testing.T) {
+	s := newTestServer()
+	s.HistoryStore = nil
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/history?ip=192.168.1.1&port=1&range=live", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 with nil store, got %d", w.Code)
+	}
+}
+
+func TestAPIHistoryAllRanges(t *testing.T) {
+	s := newTestServer()
+	for _, rng := range []string{"live", "1h", "24h", ""} {
+		w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/history?ip=10.0.0.1&port=5&range="+rng, nil)
+		s.Router.ServeHTTP(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("range=%q: expected 200, got %d", rng, w.Code)
+		}
+	}
+}
+
 func TestAPINotes(t *testing.T) {
 	s := newTestServer()
 	body := strings.NewReader(`{"key":"192.168.1.1:1","note":"uplink"}`)
@@ -413,5 +434,59 @@ func TestHTMLPages(t *testing.T) {
 		if len(w.Body.Bytes()) < 40 {
 			t.Errorf("page %s body too short: %d bytes", path, len(w.Body.Bytes()))
 		}
+	}
+}
+
+func TestAPIGetLayoutPositions(t *testing.T) {
+	s := newTestServer()
+	s.LayoutPositionsPath = t.TempDir() + "/layout.json"
+
+	// Empty positions should return empty object
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/layout_positions", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var result map[string]map[string]float64
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+}
+
+func TestAPISaveLayoutPositions(t *testing.T) {
+	s := newTestServer()
+	s.LayoutPositionsPath = t.TempDir() + "/layout.json"
+
+	// Save some positions
+	body := `{"node1":{"x":100,"y":200},"node2":{"x":300,"y":400}}`
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/layout_positions", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// Verify positions were saved
+	w2, r2 := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/layout_positions", nil)
+	s.Router.ServeHTTP(w2, r2)
+	var result map[string]map[string]float64
+	if err := json.NewDecoder(w2.Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if result["node1"]["x"] != 100 || result["node1"]["y"] != 200 {
+		t.Fatalf("unexpected node1 position: %+v", result["node1"])
+	}
+	if result["node2"]["x"] != 300 || result["node2"]["y"] != 400 {
+		t.Fatalf("unexpected node2 position: %+v", result["node2"])
+	}
+}
+
+func TestAPISaveLayoutPositionsInvalidBody(t *testing.T) {
+	s := newTestServer()
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/layout_positions", strings.NewReader(`not json`))
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid body, got %d", w.Code)
 	}
 }

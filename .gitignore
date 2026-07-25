@@ -1,15 +1,28 @@
+# Runtime data
 counters.json
 notes.json
 history_hourly.json
 history_daily.json
+*.duckdb
+clients.json
+layout_positions.json
+config.json
+
+# Directories
 backup/
 logs/
-*.log
-network_scanner.db
-config.json
+node_modules/
+frontend/node_modules/
+
+# Build artifacts
+static/dist/
 switch-dashboard
+
+# OS files
 .DS_Store
 Thumbs.db
-node_modules/
+
+# Misc
+*.log
+network_scanner.db
 *.exe
-frontend/node_modules/

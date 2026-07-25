@@ -89,6 +89,7 @@ func main() {
 	srv := server.NewServer(cache, cfgProvider, al, nil, mustStaticFS())
 	srv.HistoryStore = histStore
 	srv.ClientHostsPath = "clients.json"
+	srv.LayoutPositionsPath = "layout_positions.json"
 
 	// Pass notes from config to poller
 	notes := cfg.Notes

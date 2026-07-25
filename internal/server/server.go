@@ -24,10 +24,13 @@ type Server struct {
 	Logger          Logger
 	tmpl            *template.Template
 	staticFS        fs.FS
-	ClientHosts     map[string]string
-	ClientHostsPath string
-	clientHostsMu   sync.RWMutex
-	HistoryStore    *history.Store
+	ClientHosts        map[string]string
+	ClientHostsPath    string
+	clientHostsMu      sync.RWMutex
+	LayoutPositions    map[string]map[string]float64
+	LayoutPositionsPath string
+	layoutPositionsMu  sync.RWMutex
+	HistoryStore       *history.Store
 }
 
 func (s *Server) ClientHost(mac string) string {
@@ -67,6 +70,36 @@ func (s *Server) saveClientHosts() {
 		return
 	}
 	os.WriteFile(s.ClientHostsPath, data, 0644)
+}
+
+func (s *Server) loadLayoutPositions() {
+	if s.LayoutPositionsPath == "" {
+		return
+	}
+	data, err := os.ReadFile(s.LayoutPositionsPath)
+	if err != nil {
+		return
+	}
+	var positions map[string]map[string]float64
+	if err := json.Unmarshal(data, &positions); err != nil {
+		return
+	}
+	s.layoutPositionsMu.Lock()
+	s.LayoutPositions = positions
+	s.layoutPositionsMu.Unlock()
+}
+
+func (s *Server) saveLayoutPositions() {
+	if s.LayoutPositionsPath == "" {
+		return
+	}
+	s.layoutPositionsMu.RLock()
+	data, err := json.MarshalIndent(s.LayoutPositions, "", "  ")
+	s.layoutPositionsMu.RUnlock()
+	if err != nil {
+		return
+	}
+	os.WriteFile(s.LayoutPositionsPath, data, 0644)
 }
 
 type ConfigProvider interface {
@@ -114,7 +147,8 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, st
 		Config:      cfg,
 		Logger:      logger,
 		staticFS:    staticFS,
-		ClientHosts: make(map[string]string),
+			ClientHosts:     make(map[string]string),
+		LayoutPositions: make(map[string]map[string]float64),
 	}
 
 	s.Router.Use(middleware.Logger)
@@ -124,6 +158,7 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, st
 	s.tmpl = loadTemplatesWithFS(tmplFS)
 	s.registerRoutes()
 	s.loadClientHosts()
+	s.loadLayoutPositions()
 	return s
 }
 
@@ -188,6 +223,8 @@ func (s *Server) registerRoutes() {
 		r.Post("/vendors", s.handleAPISaveVendors)
 		r.Post("/vendors/update_oui", s.handleAPIUpdateOUI)
 		r.Post("/clients/update_host", s.handleAPIUpdateHost)
+		r.Get("/layout_positions", s.handleAPIGetLayoutPositions)
+		r.Post("/layout_positions", s.handleAPISaveLayoutPositions)
 
 		r.Get("/openapi.json", s.handleOpenAPI)
 	})

@@ -1,9 +1,5 @@
-// @ts-nocheck
 import { t, setLang, getLang } from './i18n';
-
-const REFRESH_SECONDS = (window.__DATA__ && window.__DATA__.refresh) || 30;
-const enabledColumns = (window.__DATA__ && window.__DATA__.columns) || ['port', 'status', 'speed', 'packets', 'bytes', 'info', 'notes'];
-const PORTS_WRAP_THRESHOLD = (window.__DATA__ && window.__DATA__.portWrap) || 0;
+import { REFRESH_SECONDS, enabledColumns, PORTS_WRAP_THRESHOLD } from './dashboard-utils';
 
 let currentGraphIp = null;
 let currentGraphPort = null;
@@ -142,13 +138,13 @@ function handleResizeMove(event) {
     // Resize all MAC tables across all switch cards to keep layout aligned
     const ths = document.querySelectorAll(`.mac-table th[data-col-id="${resizingColId}"]`);
     ths.forEach(th => {
-      th.style.width = newWidth + 'px';
+      (th as HTMLElement).style.width = newWidth + 'px';
     });
   } else {
     // Set the width on all corresponding th elements across all switch cards to keep layout aligned
     const ths = document.querySelectorAll(`.port-table th[data-col-id="${resizingColId}"]`);
     ths.forEach(th => {
-      th.style.width = newWidth + 'px';
+      (th as HTMLElement).style.width = newWidth + 'px';
     });
   }
 }
@@ -436,8 +432,8 @@ function toggleMacTable(ip) {
   state.expanded = !state.expanded;
   saveMacStatesToStorage();
   
-  const content = document.querySelector(`.mac-content-${CSS.escape(ip)}`);
-  const arrow = document.querySelector(`.mac-toggle-arrow-${CSS.escape(ip)}`);
+  const content = document.querySelector(`.mac-content-${CSS.escape(ip)}`) as HTMLElement | null;
+  const arrow = document.querySelector(`.mac-toggle-arrow-${CSS.escape(ip)}`) as HTMLElement | null;
   
   if (content && arrow) {
     if (state.expanded) {
@@ -477,8 +473,8 @@ function toggleIgmpTable(ip) {
   states[ip].expanded = !states[ip].expanded;
   localStorage.setItem('igmp_states', JSON.stringify(states));
   
-  const content = document.querySelector(`.igmp-content-${CSS.escape(ip)}`);
-  const arrow = document.querySelector(`.igmp-toggle-arrow-${CSS.escape(ip)}`);
+  const content = document.querySelector(`.igmp-content-${CSS.escape(ip)}`) as HTMLElement | null;
+  const arrow = document.querySelector(`.igmp-toggle-arrow-${CSS.escape(ip)}`) as HTMLElement | null;
   
   if (content && arrow) {
     if (states[ip].expanded) {
@@ -493,12 +489,12 @@ function toggleIgmpTable(ip) {
 
 function filterMacTable(ip) {
   const state = getMacState(ip);
-  const fMac = document.querySelector(`.mac-filter-mac-${CSS.escape(ip)}`);
-  const fHost = document.querySelector(`.mac-filter-host-${CSS.escape(ip)}`);
-  const fVendor = document.querySelector(`.mac-filter-vendor-${CSS.escape(ip)}`);
-  const fType = document.querySelector(`.mac-filter-type-${CSS.escape(ip)}`);
-  const fPort = document.querySelector(`.mac-filter-port-${CSS.escape(ip)}`);
-  const fVlan = document.querySelector(`.mac-filter-vlan-${CSS.escape(ip)}`);
+  const fMac = document.querySelector(`.mac-filter-mac-${CSS.escape(ip)}`) as HTMLInputElement | null;
+  const fHost = document.querySelector(`.mac-filter-host-${CSS.escape(ip)}`) as HTMLInputElement | null;
+  const fVendor = document.querySelector(`.mac-filter-vendor-${CSS.escape(ip)}`) as HTMLInputElement | null;
+  const fType = document.querySelector(`.mac-filter-type-${CSS.escape(ip)}`) as HTMLInputElement | null;
+  const fPort = document.querySelector(`.mac-filter-port-${CSS.escape(ip)}`) as HTMLInputElement | null;
+  const fVlan = document.querySelector(`.mac-filter-vlan-${CSS.escape(ip)}`) as HTMLInputElement | null;
   
   if (fMac) state.filters.mac = fMac.value.trim().toLowerCase();
   if (fHost) state.filters.host = fHost.value.trim().toLowerCase();
@@ -528,7 +524,7 @@ function manualRefreshMac(ip) {
   const spinner = document.querySelector(`.mac-spinner-${CSS.escape(ip)}`);
   const btnText = document.querySelector(`.mac-refresh-btn-${CSS.escape(ip)} span:not(.mac-spinner-${CSS.escape(ip)})`);
   
-  if (spinner) spinner.style.display = 'inline-block';
+  if (spinner) (spinner as HTMLElement).style.display = 'inline-block';
   if (btnText) btnText.textContent = 'Refreshing...';
   
   fetch(`/api/switches/${ip}/refresh_mac`, { method: 'POST' })
@@ -553,7 +549,7 @@ function manualRefreshMac(ip) {
       alert('Error refreshing MAC table: ' + err.message);
     })
     .finally(() => {
-      if (spinner) spinner.style.display = 'none';
+      if (spinner) (spinner as HTMLElement).style.display = 'none';
       if (btnText) btnText.textContent = 'Refresh MACs';
     });
 }
@@ -616,7 +612,7 @@ function renderMacTable(ip) {
     if (indicator) {
       if (state.sortBy === col) {
         indicator.textContent = state.sortAsc ? ' ▴' : ' ▾';
-        indicator.style.color = '#58a6ff';
+        (indicator as HTMLElement).style.color = '#58a6ff';
       } else {
         indicator.textContent = '';
       }
@@ -821,7 +817,7 @@ function renderSwitch(sw) {
     return '#57606a'; // Down/fallback (grey)
   };
 
-  const wrapThreshold = typeof PORTS_WRAP_THRESHOLD !== 'undefined' ? parseInt(PORTS_WRAP_THRESHOLD) : 0;
+  const wrapThreshold = typeof PORTS_WRAP_THRESHOLD !== 'undefined' ? Number(PORTS_WRAP_THRESHOLD) : 0;
   const rawPorts = sw.ports || [];
   
   const portHtmlList = rawPorts.map(p => {
@@ -1100,7 +1096,7 @@ async function updateDashboard() {
     
     // Save scroll position and height of active MAC tables before recreating elements
     data.forEach(sw => {
-      const container = document.querySelector(`.mac-scroll-container-${CSS.escape(sw.ip)}`);
+      const container = document.querySelector(`.mac-scroll-container-${CSS.escape(sw.ip)}`) as HTMLElement | null;
       if (container) {
         const state = getMacState(sw.ip);
         state.scrollTop = container.scrollTop;
@@ -1398,16 +1394,16 @@ function renderGraph(ip, port) {
         const yRx = toY(rxPoints[idx]);
 
         // Draw guideline and dots
-        hoverLine.setAttribute('x1', xPos);
-        hoverLine.setAttribute('x2', xPos);
+        hoverLine.setAttribute('x1', String(xPos));
+        hoverLine.setAttribute('x2', String(xPos));
         hoverLine.style.display = 'block';
 
-        hoverDotTx.setAttribute('cx', xPos);
-        hoverDotTx.setAttribute('cy', yTx);
+        hoverDotTx.setAttribute('cx', String(xPos));
+        hoverDotTx.setAttribute('cy', String(yTx));
         hoverDotTx.style.display = 'block';
 
-        hoverDotRx.setAttribute('cx', xPos);
-        hoverDotRx.setAttribute('cy', yRx);
+        hoverDotRx.setAttribute('cx', String(xPos));
+        hoverDotRx.setAttribute('cy', String(yRx));
         hoverDotRx.style.display = 'block';
 
         // Position & Show Tooltip Panel
@@ -1642,7 +1638,7 @@ async function doReset() {
 /* ---- Font size ---- */
 function setFontSize(size) {
   document.body.dataset.fontSize = size;
-  document.querySelectorAll('.fs-btn').forEach(b => b.classList.toggle('fs-active', b.dataset.size === size));
+  document.querySelectorAll('.fs-btn').forEach(b => (b as HTMLElement).classList.toggle('fs-active', (b as HTMLElement).dataset.size === size));
   fetch('/api/settings', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

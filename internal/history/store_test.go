@@ -134,6 +134,46 @@ func TestDuckDBStore_24hQuery(t *testing.T) {
 	}
 }
 
+func TestDuckDBStore_DefaultRange(t *testing.T) {
+	path := t.TempDir() + "/default.duckdb"
+	defer os.Remove(path)
+
+	store, err := NewStore(path)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+	store.WriteSample("10.0.0.1", "1", now, 1000, 2000, 800, 1600)
+
+	// Empty range string should default to 1h
+	points, err := store.QueryHistory("10.0.0.1", "1", "")
+	if err != nil {
+		t.Fatalf("QueryHistory(''): %v", err)
+	}
+	if len(points) != 1 {
+		t.Fatalf("expected 1 point, got %d", len(points))
+	}
+}
+
+func TestDuckDBStore_WriteAndQueryNilStore(t *testing.T) {
+	path := t.TempDir() + "/nil.duckdb"
+	defer os.Remove(path)
+
+	store, err := NewStore(path)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	store.Close()
+
+	// Writing to a closed store should fail
+	err = store.WriteSample("10.0.0.1", "1", time.Now(), 1000, 2000, 800, 1600)
+	if err == nil {
+		t.Fatal("expected error writing to closed store")
+	}
+}
+
 func TestDuckDBStore_Retention(t *testing.T) {
 	path := t.TempDir() + "/retain.duckdb"
 	defer os.Remove(path)

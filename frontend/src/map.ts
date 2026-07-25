@@ -1,4 +1,5 @@
 import { t, setLang, getLang } from './i18n';
+import { showToast } from './dashboard-utils';
 
 interface MapNode {
   id: string;
@@ -57,14 +58,27 @@ async function loadDeviceTypes() {
 }
 
 function loadPositionCache() {
-  try {
-    const saved = localStorage.getItem('map_positions');
-    if (saved) positionCache = JSON.parse(saved);
-  } catch {}
+  fetch('/api/layout_positions')
+    .then(r => r.json())
+    .then(data => {
+      if (data && typeof data === 'object') positionCache = data;
+    })
+    .catch(() => {
+      try {
+        const saved = localStorage.getItem('map_positions');
+        if (saved) positionCache = JSON.parse(saved);
+      } catch {}
+    });
 }
 
 function savePositionCache() {
-  try { localStorage.setItem('map_positions', JSON.stringify(positionCache)); } catch {}
+  fetch('/api/layout_positions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(positionCache),
+  }).catch(() => {
+    try { localStorage.setItem('map_positions', JSON.stringify(positionCache)); } catch {}
+  });
 }
 
 async function fetchTopology() {
@@ -75,6 +89,8 @@ async function fetchTopology() {
     rawLinks = data.links || [];
     computeLayout();
     render();
+    const loading = document.getElementById('map-loading');
+    if (loading) loading.style.display = 'none';
   } catch (e) {
     document.getElementById('map-canvas').innerHTML = `<div style="padding:40px;text-align:center;color:#f85149;">${t('map.failed_load')}</div>`;
   }
@@ -336,9 +352,16 @@ function updateSidebar() {
   }
 
   if (n.type === 'client') {
-    html += `<div style="margin-top:12px;display:flex;gap:6px;">
-      <input id="rename-input" value="${n.host || n.name}" style="flex:1;padding:4px 8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px;" placeholder="${t('map.nickname')}"/>
-      <button class="btn btn-secondary" onclick="renameClient()" style="padding:4px 10px;font-size:11px;">${t('btn.save')}</button>
+    const clientNames = [...new Set(rawNodes
+      .filter(c => c.type === 'client' && (c.host || c.name))
+      .map(c => c.host || c.name)
+    )];
+    html += `<div style="margin-top:12px;display:flex;gap:6px;flex-direction:column;">
+      <div style="display:flex;gap:6px;">
+        <input id="rename-input" list="client-name-suggestions" value="${n.host || n.name}" style="flex:1;padding:4px 8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px;" placeholder="${t('map.nickname')}"/>
+        <button class="btn btn-secondary" onclick="renameClient()" style="padding:4px 10px;font-size:11px;">${t('btn.save')}</button>
+      </div>
+      <datalist id="client-name-suggestions">${clientNames.map(cn => `<option value="${cn}">`).join('')}</datalist>
     </div>`;
   }
 
@@ -448,12 +471,110 @@ function renameClient() {
     selectedNode.host = host;
     updateSidebar();
     render();
-  }).catch(() => {});
+    showToast(t('map.bulk_rename_saved'), 'toast-success');
+  }).catch(() => {
+    showToast(t('toast.failed'), 'toast-error');
+  });
 }
 
 function toggleClients() {
   showClients = !showClients;
   render();
+}
+
+function bulkRename() {
+  const existing = document.getElementById('bulk-rename-modal');
+  if (existing) {
+    existing.classList.toggle('open');
+    return;
+  }
+  const clients = rawNodes.filter(n => n.type === 'client');
+  const modal = document.createElement('div');
+  modal.id = 'bulk-rename-modal';
+  modal.className = 'modal-overlay open';
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+  modal.innerHTML = `
+    <div class="modal" style="max-width:600px;">
+      <h3>${t('map.bulk_rename_title')} (${clients.length})</h3>
+      <div style="max-height:50vh;overflow-y:auto;">
+        ${clients.map(c => `
+          <div class="bulk-rename-row" data-mac="${c.mac || c.id}">
+            <span class="bulk-rename-mac">${(c.mac || c.id).slice(-8)}</span>
+            <input class="bulk-rename-input" value="${c.host || c.name}" placeholder="${t('map.nickname')}"/>
+            <button class="btn btn-secondary bulk-rename-save" style="padding:4px 10px;font-size:11px;flex-shrink:0;">${t('btn.save')}</button>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="document.getElementById('bulk-rename-modal').classList.remove('open')">${t('map.bulk_close')}</button>
+        <button class="btn btn-primary" id="bulk-save-all">${t('map.bulk_save')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Single-row save
+  modal.querySelectorAll('.bulk-rename-save').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.bulk-rename-row') as HTMLElement;
+      const mac = row.getAttribute('data-mac') || '';
+      const input = row.querySelector('.bulk-rename-input') as HTMLInputElement;
+      const host = input.value.trim();
+      if (!host) return;
+      fetch('/api/clients/update_host', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mac, host }),
+      }).then(r => {
+        if (!r.ok) throw new Error();
+        const node = rawNodes.find(n => (n.mac || n.id) === mac);
+        if (node) { node.name = host; node.host = host; }
+        if (selectedNode && (selectedNode.mac || selectedNode.id) === mac) {
+          selectedNode.name = host;
+          selectedNode.host = host;
+          updateSidebar();
+        }
+        render();
+        showToast(t('toast.saved'), 'toast-success');
+      }).catch(() => {
+        showToast(t('toast.failed'), 'toast-error');
+      });
+    });
+  });
+
+  // Save All
+  document.getElementById('bulk-save-all')?.addEventListener('click', () => {
+    const rows = modal.querySelectorAll('.bulk-rename-row');
+    let pending = 0;
+    rows.forEach(row => {
+      const mac = (row as HTMLElement).getAttribute('data-mac') || '';
+      const input = row.querySelector('.bulk-rename-input') as HTMLInputElement;
+      const host = input.value.trim();
+      if (!host) return;
+      pending++;
+      fetch('/api/clients/update_host', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mac, host }),
+      }).then(r => {
+        if (!r.ok) throw new Error();
+        const node = rawNodes.find(n => (n.mac || n.id) === mac);
+        if (node) { node.name = host; node.host = host; }
+        if (selectedNode && (selectedNode.mac || selectedNode.id) === mac) {
+          selectedNode.name = host;
+          selectedNode.host = host;
+          updateSidebar();
+        }
+      }).catch(() => {}).finally(() => {
+        pending--;
+        if (pending <= 0) {
+          render();
+          modal.classList.remove('open');
+          showToast(t('map.bulk_rename_saved'), 'toast-success');
+        }
+      });
+    });
+    if (pending === 0) modal.classList.remove('open');
+  });
 }
 
 window.addEventListener('load', init);
@@ -463,3 +584,4 @@ window.addEventListener('resize', () => { render(); });
 (window as any).toggleClients = toggleClients;
 (window as any).resetLayout = resetLayout;
 (window as any).searchNavigate = searchNavigate;
+(window as any).bulkRename = bulkRename;

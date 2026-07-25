@@ -1,3 +1,5 @@
+import { showToast } from './dashboard-utils';
+
 let fileToDelete = null;
 let rowToDelete = null;
 
@@ -20,7 +22,7 @@ async function loadBackups() {
     const data = await res.json();
     
     if (data.error) {
-      showErrorToast("Error loading backups: " + data.error);
+      showToast("Error loading backups: " + data.error, "error");
       renderErrorState(data.error);
       return;
     }
@@ -32,7 +34,7 @@ async function loadBackups() {
     
     renderTable(data);
   } catch (err) {
-    showErrorToast("Connection error: " + err.message);
+    showToast("Connection error: " + err.message, "error");
     renderErrorState(err.message);
   }
 }
@@ -133,7 +135,7 @@ async function executeDelete() {
     const data = await res.json();
     
     if (res.ok && data.status === "ok") {
-      showSuccessToast("Backup deleted successfully");
+      showToast("Backup deleted successfully", "success");
       
       if (rowToDelete) {
         rowToDelete.classList.add("fade-out");
@@ -146,10 +148,10 @@ async function executeDelete() {
         }, 400);
       }
     } else {
-      showErrorToast("Delete failed: " + (data.error || "Unknown error"));
+      showToast("Delete failed: " + (data.error || "Unknown error"), "error");
     }
   } catch (err) {
-    showErrorToast("Error connecting to server: " + err.message);
+    showToast("Error connecting to server: " + err.message, "error");
   } finally {
     confirmBtn.disabled = false;
     confirmBtn.textContent = "Delete Permanently";
@@ -157,28 +159,6 @@ async function executeDelete() {
   }
 }
 
-function showSuccessToast(message: string) {
-  showToast(message, "success");
-}
-
-function showErrorToast(message: string) {
-  showToast(message, "error");
-}
-
-function showToast(message: string, type: string, icon = "") {
-  const toast = document.getElementById("toast-box")!;
-  const toastIcon = document.getElementById("toast-icon")!;
-  const toastMsg = document.getElementById("toast-message")!;
-  
-  toast.className = `toast ${type}`;
-  toastIcon.textContent = icon;
-  toastMsg.textContent = message;
-  
-  toast.classList.add("show");
-  setTimeout(() => {
-    toast.classList.remove("show");
-  }, 4000);
-}
 
 (window as any).loadBackups = loadBackups;
 (window as any).confirmDelete = confirmDelete;

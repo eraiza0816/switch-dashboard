@@ -28,7 +28,8 @@ interface Window {
   handleDragEnd: (e: DragEvent) => void;
   handleDrop: (e: DragEvent, colId: string) => void;
   filterMacTable: (ip: string) => void;
-  saveMacScroll: (ip: string) => void;
+  saveMacScroll: (ip: string, el: HTMLElement) => void;
+  bulkRename: () => void;
   switchConsole: (ip: string) => void;
 }
 

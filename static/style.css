@@ -146,6 +146,10 @@ input:focus, select:focus, textarea:focus { border-color: #58a6ff; box-shadow: 0
 ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #484f58; }
 
+.bulk-rename-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #21262d; }
+.bulk-rename-mac { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8b949e; min-width:64px; }
+.bulk-rename-input { flex:1; padding:4px 8px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:#c9d1d9; font-size:12px; }
+
 @media (max-width: 768px) {
   .dashboard-grid { --grid-columns: 1fr !important; }
   .header { flex-direction: column; align-items: flex-start; }
