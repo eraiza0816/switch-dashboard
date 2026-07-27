@@ -2,7 +2,7 @@
 
 **RTLPlayground** ファームウェア（RTL8372/RTL8373 ベースの 2.5GbE スイッチ）を搭載したスイッチのためのリアルタイム監視ダッシュボード。Go + TypeScript 製、シングルバイナリで動作します。
 
-![Dashboard](https://raw.githubusercontent.com/eraiza0816/switch-dashboard/refs/heads/main/images/dashboard.png)
+![Dashboard](images/dashboard.png)
 
 ## 機能
 
