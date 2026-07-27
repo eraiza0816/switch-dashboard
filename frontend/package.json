@@ -5,12 +5,9 @@
   "scripts": {
     "build": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts ./src/map.ts --outdir ../static/dist --target browser --minify --splitting",
     "watch": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts --outdir ../static/dist --target browser --watch",
-    "typecheck": "bun tsc --noEmit",
-    "e2e": "playwright test --config=e2e/playwright.config.ts",
-    "e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
+    "typecheck": "bun tsc --noEmit"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
     "bun": "^1.3.14",
     "typescript": "^5"
   },

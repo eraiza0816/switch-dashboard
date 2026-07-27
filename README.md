@@ -136,7 +136,3 @@ RTLPlayground Switch (uIP embedded webserver)
 ├── Dockerfile                 # マルチステージビルド（bun → Go）
 └── history.duckdb             # 時系列データベース（自動生成）
 ```
-
-## ライセンス
-
-MIT

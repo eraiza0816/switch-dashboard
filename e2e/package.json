@@ -1,0 +1,13 @@
+{
+  "name": "switch-dashboard-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --config=playwright.config.ts",
+    "test:ui": "playwright test --config=playwright.config.ts --ui",
+    "screenshots": "OUT_DIR=../images playwright test --config=playwright.config.ts tests/screenshots.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0"
+  }
+}

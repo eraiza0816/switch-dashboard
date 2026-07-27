@@ -14,15 +14,18 @@ COPY . .
 COPY --from=frontend /app/static/dist/ ./static/dist/
 RUN CGO_ENABLED=1 go build -o switch-dashboard ./cmd/switch-dashboard/
 
-FROM mcr.microsoft.com/playwright:jammy
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/switch-dashboard /switch-dashboard
 COPY --from=builder /build/templates/ /templates/
 COPY --from=builder /build/static/ /static/
-COPY frontend/e2e/ /e2e/
-COPY frontend/package.json frontend/package-lock.json /e2e/
+COPY e2e/ /e2e/
 WORKDIR /e2e
-RUN npm install && npx playwright install chromium 2>&1 | tail -5
+RUN npm install && npx playwright install --with-deps chromium 2>&1 | tail -5
 RUN echo '{"title":"E2E Test","refresh_interval":30,"switches":[{"name":"Test Switch","ip":"192.168.10.247","password":"1234","model":"RTLPlayground","port_count":8,"enabled":true}]}' > /config.json
 ENV LISTEN=:8081
 CMD cd / && /switch-dashboard & sleep 2 && cd /e2e && npx playwright test --config=playwright.config.ts

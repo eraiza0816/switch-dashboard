@@ -85,6 +85,28 @@ func (p *Poller) seedMockData() {
 		{Port: "5", Status: "up", Link: "Link Up", Speed: "1G", Duplex: "Full", TXBytes: 100000, RXBytes: 200000, CumTX: 100000000, CumRX: 200000000, SpeedTX: 80000000, SpeedRX: 160000000},
 		{Port: "9", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", TXBytes: 2000000, RXBytes: 4000000, CumTX: 2000000000, CumRX: 4000000000, SpeedTX: 1600000000, SpeedRX: 3200000000},
 	}
+
+	if p.historyStore != nil {
+		ts := time.Now()
+		for _, port := range ports {
+			if port.SpeedTX > 0 {
+				for i := 120; i >= 0; i-- {
+					t := ts.Add(-time.Duration(i) * time.Second)
+					variation := 1.0 + float64(i%10)*0.02
+					if err := p.historyStore.WriteSample(p.ip, port.Port, t,
+						port.CumTX-int64(float64(port.SpeedTX)*float64(i)*variation),
+						port.CumRX-int64(float64(port.SpeedRX)*float64(i)*variation),
+						int64(float64(port.SpeedTX)*variation),
+						int64(float64(port.SpeedRX)*variation),
+					); err != nil {
+						p.logger.Error("seed history write failed", "ip", p.ip, "port", port.Port, "error", err)
+					}
+				}
+			}
+		}
+		p.logger.Info("seeded mock history data", "ip", p.ip, "ports", len(ports))
+	}
+
 	swData := &server.SwitchData{
 		Name:     p.name,
 		IP:       p.ip,

@@ -73,14 +73,14 @@ func main() {
 		logger.Warn("cannot open history store, history will be disabled", "error", err)
 	}
 	if histStore != nil {
-		if err := histStore.Retain(24 * time.Hour); err != nil {
+		if err := histStore.Retain(365 * 24 * time.Hour); err != nil {
 			logger.Warn("history retention cleanup failed", "error", err)
 		}
-		// Periodic retention cleanup every hour
+		// Periodic retention cleanup every day
 		go func() {
 			for {
-				time.Sleep(1 * time.Hour)
-				if err := histStore.Retain(24 * time.Hour); err != nil {
+				time.Sleep(24 * time.Hour)
+				if err := histStore.Retain(365 * 24 * time.Hour); err != nil {
 					logger.Warn("history retention cleanup failed", "error", err)
 				}
 			}
