@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/eraiza0816/switch-dashboard/internal/history"
+	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,22 +23,25 @@ import (
 var Version = "0.1.0"
 
 type Server struct {
-	Router          *chi.Mux
-	Cache           *Cache
-	Config          ConfigProvider
-	Logger          Logger
-	tmpl            *template.Template
-	staticFS        fs.FS
-	ClientHosts        map[string]string
-	ClientHostsPath    string
-	clientHostsMu      sync.RWMutex
-	LayoutPositions    map[string]map[string]float64
+	Router              *chi.Mux
+	Cache               *Cache
+	Config              ConfigProvider
+	Logger              *slog.Logger
+	LogBuffer           *logbuf.LogBuffer
+	tmpl                *template.Template
+	staticFS            fs.FS
+	ClientHosts         map[string]string
+	ClientHostsPath     string
+	clientHostsMu       sync.RWMutex
+	LayoutPositions     map[string]map[string]float64
 	LayoutPositionsPath string
-	layoutPositionsMu  sync.RWMutex
-	HistoryStore       *history.Store
-	OUI               *oui.DB
-	DataDir           string
-	ConfigPath        string
+	layoutPositionsMu   sync.RWMutex
+	HistoryStore        *history.Store
+	OUI                 *oui.DB
+	DataDir             string
+	ConfigPath          string
+	DuckDBReady         bool
+	ConfigReload        func() error
 }
 
 func (s *Server) ClientHost(mac string) string {
@@ -117,13 +124,6 @@ type ConfigProvider interface {
 	Version() string
 }
 
-type Logger interface {
-	Info(msg string, args ...any)
-	Warn(msg string, args ...any)
-	Error(msg string, args ...any)
-	Debug(msg string, args ...any)
-}
-
 type simpleConfig struct {
 	title              string
 	refresh            int
@@ -144,26 +144,76 @@ func (s *simpleConfig) ColumnWidths() map[string]int     { return s.columnWidths
 func (s *simpleConfig) ColumnOrder() []string            { return s.columnOrder }
 func (s *simpleConfig) Version() string                  { return s.version }
 
-func NewServer(cache *Cache, cfg ConfigProvider, logger Logger, tmplFS fs.FS, staticFS fs.FS) *Server {
+func NewServer(cache *Cache, cfg ConfigProvider, logger *slog.Logger, logBuf *logbuf.LogBuffer, tmplFS fs.FS, staticFS fs.FS) *Server {
 	s := &Server{
-		Router:      chi.NewRouter(),
-		Cache:       cache,
-		Config:      cfg,
-		Logger:      logger,
-		staticFS:    staticFS,
-			ClientHosts:     make(map[string]string),
+		Router:          chi.NewRouter(),
+		Cache:           cache,
+		Config:          cfg,
+		Logger:          logger,
+		LogBuffer:       logBuf,
+		staticFS:        staticFS,
+		ClientHosts:     make(map[string]string),
 		LayoutPositions: make(map[string]map[string]float64),
 	}
 
-	s.Router.Use(middleware.Logger)
-	s.Router.Use(middleware.Recoverer)
+	s.Router.Use(middleware.RequestID)
 	s.Router.Use(middleware.RealIP)
+	s.Router.Use(middleware.Recoverer)
+	s.Router.Use(s.requestLogger)
+
+	s.Router.Get("/healthz", s.handleHealthz)
+	s.Router.Get("/readyz", s.handleReadyz)
+	s.Router.Handle("/metrics", metricsHandler())
+	s.Router.Handle("/debug/pprof/*", http.DefaultServeMux)
+	s.Router.Get("/debug/pprof/cmdline", http.DefaultServeMux.ServeHTTP)
+	s.Router.Get("/debug/pprof/profile", http.DefaultServeMux.ServeHTTP)
+	s.Router.Get("/debug/pprof/symbol", http.DefaultServeMux.ServeHTTP)
+	s.Router.Get("/debug/pprof/trace", http.DefaultServeMux.ServeHTTP)
 
 	s.tmpl = loadTemplatesWithFS(tmplFS)
 	s.registerRoutes()
 	s.loadClientHosts()
 	s.loadLayoutPositions()
 	return s
+}
+
+func (s *Server) requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" || r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+		duration := time.Since(start)
+		s.Logger.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", ww.Status(),
+			"duration", duration.String(),
+			"bytes", ww.BytesWritten(),
+			"request_id", middleware.GetReqID(r.Context()),
+		)
+		recordMetrics(r.Method, r.URL.Path, ww.Status(), duration.Seconds())
+	})
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !s.DuckDBReady {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"status": "not ready", "reason": "duckdb not ready"})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 }
 
 func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {
@@ -217,6 +267,7 @@ func (s *Server) registerRoutes() {
 		r.Post("/settings", s.handleAPISaveSettings)
 		r.Get("/config/settings", s.handleAPIGetConfigSettings)
 		r.Post("/config/settings", s.handleAPISaveConfigSettings)
+		r.Post("/config/reload", s.handleAPIConfigReload)
 
 		r.Get("/logs", s.handleAPIGetLogs)
 		r.Post("/logs/level", s.handleAPISetLogLevel)

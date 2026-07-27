@@ -2,20 +2,22 @@ package server
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
 )
 
-type testLogger struct{}
+var testLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-func (t testLogger) Info(msg string, args ...any)  {}
-func (t testLogger) Warn(msg string, args ...any)  {}
-func (t testLogger) Error(msg string, args ...any) {}
-func (t testLogger) Debug(msg string, args ...any) {}
+func newLogBuf() *logbuf.LogBuffer {
+	return logbuf.New(slog.NewTextHandler(io.Discard, nil), 100, slog.LevelDebug)
+}
 
 type testConfig struct{}
 
@@ -45,7 +47,7 @@ func newTestServer() *Server {
 			{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"},
 		},
 	})
-	srv := NewServer(cache, testConfig{}, testLogger{}, nil, nil)
+	srv := NewServer(cache, testConfig{}, testLogger, newLogBuf(), nil, nil)
 	srv.OUI = oui.New()
 	return srv
 }
@@ -387,7 +389,7 @@ func TestClientHostPersistence(t *testing.T) {
 		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
 		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
 	})
-	s1 := NewServer(cache1, testConfig{}, testLogger{}, nil, nil)
+	s1 := NewServer(cache1, testConfig{}, testLogger, newLogBuf(), nil, nil)
 	s1.OUI = oui.New()
 	s1.ClientHostsPath = path
 	body := `{"mac":"AA:BB:CC:DD:EE:01","host":"MyDevice"}`
@@ -405,7 +407,7 @@ func TestClientHostPersistence(t *testing.T) {
 		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
 		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
 	})
-	s2 := NewServer(cache2, testConfig{}, testLogger{}, nil, nil)
+	s2 := NewServer(cache2, testConfig{}, testLogger, newLogBuf(), nil, nil)
 	s2.OUI = oui.New()
 	s2.ClientHostsPath = path
 	s2.loadClientHosts()

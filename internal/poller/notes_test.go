@@ -1,11 +1,15 @@
 package poller
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
 	"github.com/eraiza0816/switch-dashboard/internal/server"
 )
+
+var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 func TestNotesAttachedToPorts(t *testing.T) {
 	cache := server.NewCache()
@@ -23,6 +27,7 @@ func TestNotesAttachedToPorts(t *testing.T) {
 		notes:    notes,
 		history:  make(map[string]*History),
 		counters: make(map[string]*CounterState),
+		logger:   testLogger,
 	}
 
 	status := []rtlplayground.StatusEntry{
@@ -49,6 +54,7 @@ func TestNotesEmptyIfNotConfigured(t *testing.T) {
 		notes:    make(map[string]string),
 		counters: make(map[string]*CounterState),
 		history:  make(map[string]*History),
+		logger:   testLogger,
 	}
 
 	entry := rtlplayground.StatusEntry{PortNum: 1}
@@ -61,7 +67,7 @@ func TestNotesEmptyIfNotConfigured(t *testing.T) {
 func TestNewWithClientAndNotes(t *testing.T) {
 	cache := server.NewCache()
 	notes := map[string]string{"test:1": "hello"}
-	p := NewWithClientAndNotes(cache, nil, "test", "n", "m", 30, notes)
+	p := NewWithClientAndNotes(cache, nil, "test", "n", "m", 30, notes, testLogger)
 	if p.notes["test:1"] != "hello" {
 		t.Fatalf("notes not passed through constructor")
 	}

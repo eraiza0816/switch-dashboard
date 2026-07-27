@@ -21,5 +21,7 @@ COPY --from=builder /build/templates/ /templates/
 COPY --from=builder /build/static/ /static/
 EXPOSE 8081
 VOLUME ["/data"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8081/healthz || exit 1
 ENTRYPOINT ["/switch-dashboard"]
 CMD ["-d", "/data"]

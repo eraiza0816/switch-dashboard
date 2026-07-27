@@ -31,3 +31,17 @@ func (s *Server) handleAPISaveConfigSettings(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"status":"ok"}`))
 }
+
+func (s *Server) handleAPIConfigReload(w http.ResponseWriter, r *http.Request) {
+	if s.ConfigReload == nil {
+		http.Error(w, "reload not available", http.StatusServiceUnavailable)
+		return
+	}
+	if err := s.ConfigReload(); err != nil {
+		s.Logger.Error("config reload failed", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"ok"}`))
+}

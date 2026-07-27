@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -156,7 +157,7 @@ func newRTLClient(ip, password string) (*rtlplayground.Client, error) {
 	return rtlplayground.New(ip, password)
 }
 
-func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, logger Logger) {
+func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, logger *slog.Logger) {
 	status, err := client.ScrapeStatus()
 	if err != nil {
 		logger.Error("poll failed", "ip", ip, "error", err)

@@ -118,15 +118,6 @@ func (s *Server) handleBackups(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "backups.html", data)
 }
 
-func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
-	data := PageData{
-		Title:           s.Config.Title(),
-		Version:         Version,
-		CurrentLogLevel: "INFO",
-	}
-	s.renderTemplate(w, "logs.html", data)
-}
-
 func (s *Server) handleAPIDocs(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:   s.Config.Title(),

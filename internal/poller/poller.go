@@ -3,7 +3,6 @@ package poller
 import (
 	"log/slog"
 	"math"
-	"os"
 	"sync"
 	"time"
 
@@ -32,7 +31,10 @@ func (p *Poller) SetHistoryStore(store *history.Store) {
 	p.historyStore = store
 }
 
-func New(cache *server.Cache, ip, name, model string, interval int) *Poller {
+func New(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger) *Poller {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Poller{
 		cache:    cache,
 		ip:       ip,
@@ -43,28 +45,28 @@ func New(cache *server.Cache, ip, name, model string, interval int) *Poller {
 		counters: make(map[string]*CounterState),
 		history:  make(map[string]*History),
 		notes:    make(map[string]string),
-		logger:   slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		logger:   logger,
 	}
 }
 
-func NewWithNotes(cache *server.Cache, ip, name, model string, interval int, notes map[string]string) *Poller {
-	p := New(cache, ip, name, model, interval)
+func NewWithNotes(cache *server.Cache, ip, name, model string, interval int, notes map[string]string, logger *slog.Logger) *Poller {
+	p := New(cache, ip, name, model, interval, logger)
 	if notes != nil {
 		p.notes = notes
 	}
 	return p
 }
 
-func NewWithClientAndNotes(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, notes map[string]string) *Poller {
-	p := NewWithClient(cache, client, ip, name, model, interval)
+func NewWithClientAndNotes(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, notes map[string]string, logger *slog.Logger) *Poller {
+	p := NewWithClient(cache, client, ip, name, model, interval, logger)
 	if notes != nil {
 		p.notes = notes
 	}
 	return p
 }
 
-func NewWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int) *Poller {
-	p := New(cache, ip, name, model, interval)
+func NewWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger) *Poller {
+	p := New(cache, ip, name, model, interval, logger)
 	p.client = client
 	return p
 }
