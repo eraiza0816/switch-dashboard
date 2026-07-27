@@ -5,16 +5,16 @@ RUN bun install
 COPY frontend/ ./
 RUN bun run build
 
-FROM golang:1.26-alpine AS builder
-RUN apk add --no-cache gcc musl-dev
+FROM golang:1.26-bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends gcc g++ libc6-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /app/static/dist/ ./static/dist/
-RUN CGO_ENABLED=1 go build -ldflags="-linkmode external -extldflags -static" -o switch-dashboard ./cmd/switch-dashboard/
+RUN CGO_ENABLED=1 go build -o switch-dashboard ./cmd/switch-dashboard/
 
-FROM mcr.microsoft.com/playwright:v1.62.0-jammy
+FROM mcr.microsoft.com/playwright:jammy
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/switch-dashboard /switch-dashboard
 COPY --from=builder /build/templates/ /templates/
@@ -25,4 +25,4 @@ WORKDIR /e2e
 RUN npm install && npx playwright install chromium 2>&1 | tail -5
 RUN echo '{"title":"E2E Test","refresh_interval":30,"switches":[{"name":"Test Switch","ip":"192.168.10.247","password":"1234","model":"RTLPlayground","port_count":8,"enabled":true}]}' > /config.json
 ENV LISTEN=:8081
-CMD /switch-dashboard & sleep 2 && npx playwright test --config=playwright.config.ts
+CMD cd / && /switch-dashboard & sleep 2 && cd /e2e && npx playwright test --config=playwright.config.ts
