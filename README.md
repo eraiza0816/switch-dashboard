@@ -7,9 +7,9 @@
 ## 機能
 
 - **リアルタイムポート状態**: リンク状態、速度、 duplex、TX/RX カウンター・パケット数
-- **帯域チャート**: ライブ / 1時間 / 24時間 のロールング履歴（Chart.js + DuckDB）
+- **帯域チャート**: ライブ / 1時間 / 24時間 のロールング履歴（Chart.js + DuckDB、1年保持）
 - **SFP+ DDMI**: 温度、電圧、バイアス電流、TX/RX パワーテレメトリー
-- **MAC フォワーディングテーブル**: 検索・フィルタリング・ベンダー解決対応
+- **MAC フォワーディングテーブル**: 検索・フィルタリング・自動ベンダー解決（IEEE OUI）
 - **EEE / VLAN / LAG / MTU / ミラー / 帯域制御**: 状態表示
 - **設定バックアップ & リストア**: Web UI から設定のダウンロード・アップロード
 - **ファームウェア更新**: Web インターフェースからファームウェアをアップロード
@@ -18,6 +18,7 @@
 - **ログビューア**: ブラウザ上でサーバーログ表示、レベル制御、ダウンロード
 - **設定エディタ**: Web ベースのスイッチ・ダッシュボード設定編集
 - **ダークガラスモーフィック UI**: カスタムタイポグラフィ、すりガラス風コンポーネント
+- **MAC ベンダー自動解決**: IEEE OUI データベースを自動ダウンロード、カスタム上書き対応
 
 ## 対応ハードウェア
 
@@ -32,8 +33,9 @@ cd frontend && bun install && bun run build && cd ..
 # バイナリをビルド
 go build -o switch-dashboard ./cmd/switch-dashboard/
 
-# config.json を用意
-cat > config.json << 'EOF'
+# 設定ファイルを用意（保存先: ~/.local/share/switch-dashboard/config.json）
+mkdir -p ~/.local/share/switch-dashboard
+cat > ~/.local/share/switch-dashboard/config.json << 'EOF'
 {
   "title": "My Dashboard",
   "refresh_interval": 30,
@@ -50,11 +52,33 @@ cat > config.json << 'EOF'
 }
 EOF
 
-# 実行
+# 実行（データは ~/.local/share/switch-dashboard/ に保存）
 ./switch-dashboard
 ```
 
 http://localhost:8081 を開く
+
+### データディレクトリの変更
+
+```bash
+# カレントディレクトリに保存（従来互換）
+./switch-dashboard -d .
+
+# 明示的なパスを指定
+./switch-dashboard -d /mnt/data -c /etc/switch-dashboard/config.json
+```
+
+## データディレクトリ構成
+
+デフォルトのデータディレクトリ: `~/.local/share/switch-dashboard/`
+
+```
+~/.local/share/switch-dashboard/
+├── config.json              # スイッチ設定（--config / -c で変更可）
+├── history.duckdb           # DuckDB 時系列データベース（1年保持）
+├── clients.json             # クライアントホスト名の上書き設定
+└── layout_positions.json    # トポロジーマップのノード位置
+```
 
 ## Docker
 
@@ -69,7 +93,7 @@ docker run -d --name switch-dashboard -p 8081:8081 \
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/switches` | 全スイッチのライブ状態（ポート、MAC、SFP、EEE、VLAN、LAG） |
+| GET | `/api/switches` | 全スイッチのライブ状態（ポート、MAC、SFP、EEE、VLAN、LAG、ベンダー） |
 | GET | `/api/switches/:ip/sfp` | SFP+ DDMI 診断情報 |
 | GET | `/api/switches/:ip/transceiver` | SFP EEPROM 情報 |
 | POST | `/api/switches/:ip/refresh_mac` | MAC フォワーディングテーブルを更新 |
@@ -107,31 +131,58 @@ Go Server (chi router, single binary, DuckDB history)
 RTLPlayground Switch (uIP embedded webserver)
 ```
 
-- **バックエンド**: Go 1.26+、chi router、DuckDB による帯域履歴保存
+- **バックエンド**: Go 1.26+、chi router、DuckDB による帯域履歴保存（1年保持）
 - **フロントエンド**: TypeScript、Chart.js（CDN）、bun ビルド、インライン CSS ダークテーマ
 - **スクレイパー**: RTLPlayground の JSON エンドポイントに直接 HTTP 呼び出し（HTML 解析なし）
 - **履歴**: DuckDB 時系列ストア、ライブ / 1h / 24h の集約に対応
+- **MAC ベンダー解決**: IEEE OUI CSV を自動ダウンロード、カスタム上書き対応
 
 ## プロジェクト構成
 
 ```
-├── cmd/switch-dashboard/      # エントリーポイント
+├── cmd/switch-dashboard/          # エントリーポイント
+├── e2e/                           # Playwright E2E テスト（51 tests）
+│   ├── tests/                     #   テストファイル
+│   ├── playwright.config.ts       #   Playwright 設定
+│   └── package.json               #   依存分離（@playwright/test のみ）
 ├── frontend/
-│   ├── src/                   # TypeScript ソース（dashboard, logs, backups, map）
-│   └── package.json           # bun ビルド設定
+│   ├── src/                       # TypeScript ソース（dashboard, logs, backups, map）
+│   └── package.json               # bun ビルド設定
 ├── internal/
-│   ├── server/                # HTTP ハンドラー、キャッシュ、テンプレート、OpenAPI 仕様
-│   ├── rtlplayground/         # スイッチ HTTP クライアント + JSON 型
-│   ├── poller/                # バックグラウンドポーリング、カウンター、履歴取込
-│   ├── config/                # config.json 管理
-│   ├── history/               # DuckDB による帯域履歴保存
-│   └── store/                 # 汎用 JSON 永続化インターフェース
-├── templates/                 # Go html/templates（6 ページ）
+│   ├── server/                    # HTTP ハンドラー、キャッシュ、テンプレート、OpenAPI 仕様
+│   ├── rtlplayground/             # スイッチ HTTP クライアント + JSON 型
+│   ├── poller/                    # バックグラウンドポーリング、カウンター、履歴取込
+│   ├── config/                    # config.json 管理
+│   ├── history/                   # DuckDB による帯域履歴保存
+│   ├── oui/                       # MAC ベンダー自動解決（IEEE OUI ダウンロード）
+│   └── store/                     # 汎用 JSON 永続化インターフェース
+├── templates/                     # Go html/templates（6 ページ）
 ├── static/
-│   ├── style.css              # ダークガラスモーフィックテーマ
-│   ├── dist/                  # コンパイル済みフロントエンド
+│   ├── style.css                  # ダークガラスモーフィックテーマ
+│   ├── dist/                      # コンパイル済みフロントエンド
 │   └── logo.png
-├── config.json                # スイッチ設定
-├── Dockerfile                 # マルチステージビルド（bun → Go）
-└── history.duckdb             # 時系列データベース（自動生成）
+├── images/                        # スクリーンショット（Playwright 自動生成）
+├── Dockerfile                     # マルチステージビルド（bun → Go）
+├── Dockerfile.e2e                 # E2E テスト用 Docker（1.5GB, chromium のみ）
+└── LICENSE                        # MIT
 ```
+
+## テスト
+
+```bash
+# Go ユニットテスト
+go test ./...
+
+# E2E テスト（サーバー起動済みであること）
+cd e2e && npm install && npx playwright test
+
+# E2E テスト（Docker 単体）
+docker build -f Dockerfile.e2e -t switch-dashboard-e2e . && docker run --rm switch-dashboard-e2e
+
+# スクリーンショット更新
+cd e2e && OUT_DIR=../images npx playwright test tests/screenshots.spec.ts
+```
+
+## ライセンス
+
+MIT
