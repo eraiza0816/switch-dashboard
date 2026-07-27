@@ -74,8 +74,12 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		Switches        []cfgSwitch `json:"switches"`
 	}
 
+	configPath := s.ConfigPath
+	if configPath == "" {
+		configPath = "config.json"
+	}
 	diskCfg := cfgRoot{RefreshInterval: 30}
-	if data, err := os.ReadFile("config.json"); err == nil {
+	if data, err := os.ReadFile(configPath); err == nil {
 		json.Unmarshal(data, &diskCfg)
 	}
 

@@ -33,6 +33,8 @@ type Server struct {
 	layoutPositionsMu  sync.RWMutex
 	HistoryStore       *history.Store
 	OUI               *oui.DB
+	DataDir           string
+	ConfigPath        string
 }
 
 func (s *Server) ClientHost(mac string) string {

@@ -72,7 +72,11 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err == nil {
-		os.WriteFile("config.json", data, 0644)
+		configPath := s.ConfigPath
+		if configPath == "" {
+			configPath = "config.json"
+		}
+		os.WriteFile(configPath, data, 0644)
 		s.Logger.Info("config saved", "switches", len(cfg.Switches))
 	}
 

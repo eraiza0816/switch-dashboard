@@ -1,10 +1,12 @@
 package main
 
 import (
+	"flag"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/eraiza0816/switch-dashboard/internal/config"
@@ -45,12 +47,27 @@ func (a *appLogger) Error(msg string, args ...any) { a.logger.Error(msg, args...
 func (a *appLogger) Debug(msg string, args ...any) { a.logger.Debug(msg, args...) }
 
 func main() {
+	dataDir := flag.String("d", "", "data directory (default: ~/.local/share/switch-dashboard)")
+	configPath := flag.String("c", "", "config file path (default: <data-dir>/config.json)")
+	flag.Parse()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	al := &appLogger{logger: logger}
 
-	cfg, err := config.Load("config.json")
+	dd := resolveDataDir(*dataDir)
+	if err := os.MkdirAll(dd, 0755); err != nil {
+		logger.Error("cannot create data directory", "dir", dd, "error", err)
+		os.Exit(1)
+	}
+
+	cp := *configPath
+	if cp == "" {
+		cp = filepath.Join(dd, "config.json")
+	}
+
+	cfg, err := config.Load(cp)
 	if err != nil {
-		logger.Warn("cannot load config", "error", err)
+		logger.Warn("cannot load config", "path", cp, "error", err)
 		cfg = &config.Config{}
 		cfg.SetDefaults()
 	}
@@ -67,8 +84,8 @@ func main() {
 		version:            "0.1.0",
 	}
 
-	// Create history store (DuckDB)
-	histStore, err := history.NewStore("history.duckdb")
+	histPath := filepath.Join(dd, "history.duckdb")
+	histStore, err := history.NewStore(histPath)
 	if err != nil {
 		logger.Warn("cannot open history store, history will be disabled", "error", err)
 	}
@@ -76,7 +93,6 @@ func main() {
 		if err := histStore.Retain(365 * 24 * time.Hour); err != nil {
 			logger.Warn("history retention cleanup failed", "error", err)
 		}
-		// Periodic retention cleanup every day
 		go func() {
 			for {
 				time.Sleep(24 * time.Hour)
@@ -89,22 +105,21 @@ func main() {
 
 	srv := server.NewServer(cache, cfgProvider, al, nil, mustStaticFS())
 	srv.HistoryStore = histStore
-	srv.ClientHostsPath = "clients.json"
-	srv.LayoutPositionsPath = "layout_positions.json"
+	srv.ClientHostsPath = filepath.Join(dd, "clients.json")
+	srv.LayoutPositionsPath = filepath.Join(dd, "layout_positions.json")
 	srv.OUI = oui.New()
+	srv.DataDir = dd
+	srv.ConfigPath = cp
 
-	// Pass notes from config to poller
 	notes := cfg.Notes
 	if notes == nil {
 		notes = make(map[string]string)
 	}
 
-	// Seed mock data immediately so the UI has something to show
 	for _, sw := range cfg.ActiveSwitches() {
 		startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore)
 	}
 
-	// Try connecting to real switches in the background
 	for _, sw := range cfg.ActiveSwitches() {
 		sw := sw
 		go func() {
@@ -133,13 +148,23 @@ func main() {
 	if addr == "" {
 		addr = ":8081"
 	}
-	logger.Info("starting server", "addr", addr)
+	logger.Info("starting server", "addr", addr, "data_dir", dd, "config", cp)
 	if err := http.ListenAndServe(addr, srv.Router); err != nil {
 		logger.Error("server failed", "error", err)
 	}
 	if histStore != nil {
 		histStore.Close()
 	}
+}
+
+func resolveDataDir(flagVal string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, ".local", "share", "switch-dashboard")
+	}
+	return "./data"
 }
 
 func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store) {

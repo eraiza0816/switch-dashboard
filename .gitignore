@@ -29,6 +29,9 @@ frontend/test-results/
 # Bun
 frontend/bun.lock
 
+# Local data directory (when using -d .)
+data/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -26,6 +26,6 @@ COPY --from=builder /build/static/ /static/
 COPY e2e/ /e2e/
 WORKDIR /e2e
 RUN npm install && npx playwright install --with-deps chromium 2>&1 | tail -5
-RUN echo '{"title":"E2E Test","refresh_interval":30,"switches":[{"name":"Test Switch","ip":"192.168.10.247","password":"1234","model":"RTLPlayground","port_count":8,"enabled":true}]}' > /config.json
+RUN mkdir -p /data && echo '{"title":"E2E Test","refresh_interval":30,"switches":[{"name":"Test Switch","ip":"192.168.10.247","password":"1234","model":"RTLPlayground","port_count":8,"enabled":true}]}' > /data/config.json
 ENV LISTEN=:8081
-CMD cd / && /switch-dashboard & sleep 2 && cd /e2e && npx playwright test --config=playwright.config.ts
+CMD cd / && /switch-dashboard -d /data & sleep 2 && cd /e2e && npx playwright test --config=playwright.config.ts

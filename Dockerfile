@@ -20,4 +20,6 @@ COPY --from=builder /build/switch-dashboard /switch-dashboard
 COPY --from=builder /build/templates/ /templates/
 COPY --from=builder /build/static/ /static/
 EXPOSE 8081
+VOLUME ["/data"]
 ENTRYPOINT ["/switch-dashboard"]
+CMD ["-d", "/data"]

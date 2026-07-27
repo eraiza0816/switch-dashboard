@@ -61,8 +61,7 @@ http://localhost:8081 を開く
 ```bash
 docker build -t switch-dashboard .
 docker run -d --name switch-dashboard -p 8081:8081 \
-  -v $(pwd)/config.json:/config.json \
-  -v $(pwd)/history.duckdb:/history.duckdb \
+  -v $(pwd)/config.json:/data/config.json \
   switch-dashboard
 ```
 
