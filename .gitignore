@@ -16,7 +16,16 @@ frontend/node_modules/
 
 # Build artifacts
 static/dist/
-switch-dashboard
+/switch-dashboard
+
+# E2E test artifacts
+frontend/e2e/results.json
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
+frontend/test-results/
+
+# Bun
+frontend/bun.lock
 
 # OS files
 .DS_Store

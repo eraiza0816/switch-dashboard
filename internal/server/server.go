@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/eraiza0816/switch-dashboard/internal/history"
+	"github.com/eraiza0816/switch-dashboard/internal/oui"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -31,6 +32,7 @@ type Server struct {
 	LayoutPositionsPath string
 	layoutPositionsMu  sync.RWMutex
 	HistoryStore       *history.Store
+	OUI               *oui.DB
 }
 
 func (s *Server) ClientHost(mac string) string {

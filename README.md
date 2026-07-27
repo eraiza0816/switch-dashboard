@@ -133,7 +133,6 @@ RTLPlayground Switch (uIP embedded webserver)
 │   ├── dist/                  # コンパイル済みフロントエンド
 │   └── logo.png
 ├── config.json                # スイッチ設定
-├── mac_vendors.txt            # MAC OUI データベース
 ├── Dockerfile                 # マルチステージビルド（bun → Go）
 └── history.duckdb             # 時系列データベース（自動生成）
 ```

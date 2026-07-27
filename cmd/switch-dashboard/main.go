@@ -9,6 +9,7 @@ import (
 
 	"github.com/eraiza0816/switch-dashboard/internal/config"
 	"github.com/eraiza0816/switch-dashboard/internal/history"
+	"github.com/eraiza0816/switch-dashboard/internal/oui"
 	"github.com/eraiza0816/switch-dashboard/internal/poller"
 	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
 	"github.com/eraiza0816/switch-dashboard/internal/server"
@@ -90,6 +91,7 @@ func main() {
 	srv.HistoryStore = histStore
 	srv.ClientHostsPath = "clients.json"
 	srv.LayoutPositionsPath = "layout_positions.json"
+	srv.OUI = oui.New()
 
 	// Pass notes from config to poller
 	notes := cfg.Notes

@@ -13,6 +13,13 @@ func (s *Server) handleAPISwitches(w http.ResponseWriter, r *http.Request) {
 	if data == nil {
 		data = []*SwitchData{}
 	}
+	for _, sw := range data {
+		for i := range sw.MACTable {
+			if sw.MACTable[i].Vendor == "" {
+				sw.MACTable[i].Vendor = s.OUI.Lookup(sw.MACTable[i].MAC)
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }

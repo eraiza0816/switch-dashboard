@@ -32,18 +32,22 @@ func (s *Server) handleAPITopology(w http.ResponseWriter, r *http.Request) {
 			}
 			seenMAC[normMAC] = true
 
+			vendor := entry.Vendor
+			if vendor == "" {
+				vendor = s.OUI.Lookup(mac)
+			}
 			override := s.ClientHost(mac)
-		name := clientName(mac, entry.Host, entry.Vendor)
-		if override != "" {
-			name = override
-		}
-		nodes = append(nodes, TopologyNode{
-			ID:     mac,
-			Name:   name,
-			Type:   "client",
-			MAC:    mac,
-			Status: "online",
-		})
+			name := clientName(mac, entry.Host, vendor)
+			if override != "" {
+				name = override
+			}
+			nodes = append(nodes, TopologyNode{
+				ID:     mac,
+				Name:   name,
+				Type:   "client",
+				MAC:    mac,
+				Status: "online",
+			})
 			links = append(links, TopologyLink{
 				Source:     sw.IP,
 				Target:     mac,

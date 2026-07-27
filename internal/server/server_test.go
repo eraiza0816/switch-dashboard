@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/eraiza0816/switch-dashboard/internal/oui"
 )
 
 type testLogger struct{}
@@ -43,7 +45,9 @@ func newTestServer() *Server {
 			{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"},
 		},
 	})
-	return NewServer(cache, testConfig{}, testLogger{}, nil, nil)
+	srv := NewServer(cache, testConfig{}, testLogger{}, nil, nil)
+	srv.OUI = oui.New()
+	return srv
 }
 
 func TestAPISwitches(t *testing.T) {
@@ -384,6 +388,7 @@ func TestClientHostPersistence(t *testing.T) {
 		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
 	})
 	s1 := NewServer(cache1, testConfig{}, testLogger{}, nil, nil)
+	s1.OUI = oui.New()
 	s1.ClientHostsPath = path
 	body := `{"mac":"AA:BB:CC:DD:EE:01","host":"MyDevice"}`
 	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/clients/update_host", strings.NewReader(body))
@@ -401,6 +406,7 @@ func TestClientHostPersistence(t *testing.T) {
 		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
 	})
 	s2 := NewServer(cache2, testConfig{}, testLogger{}, nil, nil)
+	s2.OUI = oui.New()
 	s2.ClientHostsPath = path
 	s2.loadClientHosts()
 

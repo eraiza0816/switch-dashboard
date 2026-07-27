@@ -18,6 +18,5 @@ FROM scratch
 COPY --from=builder /build/switch-dashboard /switch-dashboard
 COPY --from=builder /build/templates/ /templates/
 COPY --from=builder /build/static/ /static/
-COPY --from=builder /build/mac_vendors.txt /mac_vendors.txt
 EXPOSE 8081
 ENTRYPOINT ["/switch-dashboard"]
