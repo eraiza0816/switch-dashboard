@@ -19,6 +19,23 @@ func newLogBuf() *logbuf.LogBuffer {
 	return logbuf.New(slog.NewTextHandler(io.Discard, nil), 100, slog.LevelDebug)
 }
 
+func newTestServerWithLogger(lb *logbuf.LogBuffer) *Server {
+	cache := NewCache()
+	cache.UpdateSwitch("192.168.1.1", &SwitchData{
+		Name: "Test Switch", IP: "192.168.1.1", Model: "RTLPlayground",
+		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
+		Ports: []PortState{
+			{Port: "1", Status: "up", Speed: "1G", TXBytes: 1000, RXBytes: 2000, SpeedTX: 800, SpeedRX: 1600},
+			{Port: "2", Status: "down", Speed: "", TXBytes: 0, RXBytes: 0},
+		},
+		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"}},
+	})
+	lbLogger := slog.New(lb)
+	srv := NewServer(cache, testConfig{}, lbLogger, lb, nil, nil)
+	srv.OUI = oui.New()
+	return srv
+}
+
 type testConfig struct{}
 
 func (t testConfig) Title() string                { return "Test Dashboard" }
@@ -496,5 +513,184 @@ func TestAPISaveLayoutPositionsInvalidBody(t *testing.T) {
 	s.Router.ServeHTTP(w, r)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for invalid body, got %d", w.Code)
+	}
+}
+
+func TestHealthz(t *testing.T) {
+	s := newTestServer()
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/healthz", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if w.Body.String() != "ok" {
+		t.Fatalf("body: got %q", w.Body.String())
+	}
+}
+
+func TestReadyzReady(t *testing.T) {
+	s := newTestServer()
+	s.DuckDBReady = true
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/readyz", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var data map[string]string
+	json.NewDecoder(w.Body).Decode(&data)
+	if data["status"] != "ready" {
+		t.Fatalf("status: got %q", data["status"])
+	}
+}
+
+func TestReadyzNotReady(t *testing.T) {
+	s := newTestServer()
+	s.DuckDBReady = false
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/readyz", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+	var data map[string]string
+	json.NewDecoder(w.Body).Decode(&data)
+	if data["status"] != "not ready" {
+		t.Fatalf("status: got %q", data["status"])
+	}
+}
+
+func TestAPILogsBody(t *testing.T) {
+	lb := newLogBuf()
+	s := newTestServerWithLogger(lb)
+	s.Logger.Info("test log entry")
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/logs", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var entries []map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&entries); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(entries) < 1 {
+		t.Fatal("expected at least 1 log entry")
+	}
+	found := false
+	for _, e := range entries {
+		if e["message"] == "test log entry" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("test log entry not found in /api/logs response")
+	}
+}
+
+func TestAPILogsLevelInvalid(t *testing.T) {
+	s := newTestServer()
+	body := strings.NewReader(`{"level":"INVALID"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/logs/level", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid level, got %d", w.Code)
+	}
+}
+
+func TestAPILogsLevelChangesBuffer(t *testing.T) {
+	lb := newLogBuf()
+	s := newTestServerWithLogger(lb)
+	body := strings.NewReader(`{"level":"WARN"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/logs/level", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	s.Logger.Info("should be suppressed")
+	entries := s.LogBuffer.Get()
+	for _, e := range entries {
+		if e.Message == "should be suppressed" {
+			t.Fatal("info log was not suppressed after setting log level to warn")
+		}
+	}
+}
+
+func TestAPILogsDownload(t *testing.T) {
+	lb := newLogBuf()
+	s := newTestServerWithLogger(lb)
+	s.Logger.Info("downloadable", "key", "val")
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/logs/download", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if w.Header().Get("Content-Type") != "text/plain" {
+		t.Fatalf("content-type: got %q", w.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(body, "downloadable") {
+		t.Fatal("download body should contain log message")
+	}
+	if !strings.Contains(body, "key") || !strings.Contains(body, "val") {
+		t.Fatal("download body should contain log attributes")
+	}
+}
+
+func TestAPIConfigReloadWithoutCallback(t *testing.T) {
+	s := newTestServer()
+	s.ConfigReload = nil
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/config/reload", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 without callback, got %d", w.Code)
+	}
+}
+
+func TestAPIConfigReloadSuccess(t *testing.T) {
+	s := newTestServer()
+	reloaded := false
+	s.ConfigReload = func() error {
+		reloaded = true
+		return nil
+	}
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/config/reload", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if !reloaded {
+		t.Fatal("reload callback was not called")
+	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	s := newTestServer()
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/metrics", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "switchd_http_requests_total") {
+		t.Fatal("metrics should contain switchd_http_requests_total")
+	}
+	if !strings.Contains(body, "go_goroutines") {
+		t.Fatal("metrics should contain go_goroutines (runtime metric)")
+	}
+}
+
+func TestMetricsRecordedAfterRequest(t *testing.T) {
+	s := newTestServer()
+	// Make a request that goes through the metrics middleware
+	w1, r1 := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/switches", nil)
+	s.Router.ServeHTTP(w1, r1)
+
+	// Check metrics output includes the request
+	w2, r2 := httptest.NewRecorder(), httptest.NewRequest("GET", "/metrics", nil)
+	s.Router.ServeHTTP(w2, r2)
+	body := w2.Body.String()
+	if !strings.Contains(body, `switchd_http_requests_total{method="GET",path="/api/switches",status="200"}`) {
+		t.Fatal("metrics should include the recorded API request")
 	}
 }
