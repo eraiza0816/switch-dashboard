@@ -1,14 +1,12 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
 func (s *Server) handleAPISpeeds(w http.ResponseWriter, r *http.Request) {
 	data := s.Cache.GetSpeeds()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	s.writeJSON(w, http.StatusOK, data)
 }
 
 func (s *Server) handleAPIHistory(w http.ResponseWriter, r *http.Request) {
@@ -19,16 +17,14 @@ func (s *Server) handleAPIHistory(w http.ResponseWriter, r *http.Request) {
 		rng = "live"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	if s.HistoryStore == nil {
-		w.Write([]byte("[]"))
+		s.writeJSON(w, http.StatusOK, []int{})
 		return
 	}
 
 	points, err := s.HistoryStore.QueryHistory(ip, port, rng)
 	if err != nil {
-		http.Error(w, `{"error":"query failed"}`, http.StatusInternalServerError)
+		s.writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 
@@ -47,5 +43,5 @@ func (s *Server) handleAPIHistory(w http.ResponseWriter, r *http.Request) {
 		result.Timestamps[i] = p.TS
 	}
 
-	json.NewEncoder(w).Encode(result)
+	s.writeJSON(w, http.StatusOK, result)
 }

@@ -10,6 +10,7 @@ interface Window {
   manualRefreshMac: (ip: string) => void;
   openGraph: (ip: string, port: string, name: string, label: string, cumTX: number, cumRX: number) => void;
   openTransceiver: (ip: string, port: string, name: string) => void;
+  closeTransceiver: () => void;
   sortMac: (ip: string, col: string) => void;
   toggleIgmpTable: (ip: string) => void;
   toggleMacTable: (ip: string) => void;

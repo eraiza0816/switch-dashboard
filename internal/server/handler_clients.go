@@ -16,12 +16,12 @@ func (s *Server) handleAPIUpdateHost(w http.ResponseWriter, r *http.Request) {
 		Host string `json:"host"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	key := NormalizeMAC(req.MAC)
 	if key == "" {
-		http.Error(w, `{"error":"mac required"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "mac required")
 		return
 	}
 
@@ -35,8 +35,7 @@ func (s *Server) handleAPIUpdateHost(w http.ResponseWriter, r *http.Request) {
 	s.clientsMu.Unlock()
 
 	s.saveClients()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleAPIUpdateType(w http.ResponseWriter, r *http.Request) {
@@ -45,12 +44,12 @@ func (s *Server) handleAPIUpdateType(w http.ResponseWriter, r *http.Request) {
 		Type string `json:"type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	key := NormalizeMAC(req.MAC)
 	if key == "" {
-		http.Error(w, `{"error":"mac required"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "mac required")
 		return
 	}
 
@@ -64,8 +63,7 @@ func (s *Server) handleAPIUpdateType(w http.ResponseWriter, r *http.Request) {
 	s.clientsMu.Unlock()
 
 	s.saveClients()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleAPIClientDelete(w http.ResponseWriter, r *http.Request) {
@@ -73,12 +71,12 @@ func (s *Server) handleAPIClientDelete(w http.ResponseWriter, r *http.Request) {
 		MAC string `json:"mac"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	key := NormalizeMAC(req.MAC)
 	if key == "" {
-		http.Error(w, `{"error":"mac required"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "mac required")
 		return
 	}
 
@@ -87,14 +85,13 @@ func (s *Server) handleAPIClientDelete(w http.ResponseWriter, r *http.Request) {
 	s.clientsMu.Unlock()
 	s.saveClients()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleAPIClientImportCSV(w http.ResponseWriter, r *http.Request) {
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, `{"error":"no file part in the request"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "no file part in the request")
 		return
 	}
 	defer file.Close()
@@ -111,7 +108,7 @@ func (s *Server) handleAPIClientImportCSV(w http.ResponseWriter, r *http.Request
 		}
 		if err != nil {
 			s.clientsMu.Unlock()
-			http.Error(w, `{"error":"invalid csv"}`, http.StatusBadRequest)
+			s.writeError(w, http.StatusBadRequest, "invalid csv")
 			return
 		}
 		if len(row) < 2 {
@@ -141,6 +138,5 @@ func (s *Server) handleAPIClientImportCSV(w http.ResponseWriter, r *http.Request
 	if imported > 0 {
 		s.saveClients()
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "imported": imported})
+	s.writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "imported": imported})
 }

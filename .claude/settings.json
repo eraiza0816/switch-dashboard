@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$FILE\" == *.go ]]; then cd /home/r-pechi/workspace/switch-dashboard && gofmt -w \"$FILE\" 2>/dev/null; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

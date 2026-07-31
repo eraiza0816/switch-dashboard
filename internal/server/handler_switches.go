@@ -26,23 +26,21 @@ func (s *Server) handleAPISwitches(w http.ResponseWriter, r *http.Request) {
 		}
 		sw.MACTable = filtered
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	s.writeJSON(w, http.StatusOK, data)
 }
 
 func (s *Server) handleAPIRefreshMAC(w http.ResponseWriter, r *http.Request) {
 	ip := chi.URLParam(r, "ip")
 	if ip == "" {
-		http.Error(w, "missing ip", http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "missing ip")
 		return
 	}
 	sw := s.Cache.GetSwitch(ip)
 	if sw == nil {
-		http.Error(w, "switch not found", http.StatusNotFound)
+		s.writeError(w, http.StatusNotFound, "switch not found")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	s.writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "count": len(sw.MACTable), "mac_table": sw.MACTable,
 	})
 }
@@ -67,12 +65,12 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Read switches from saved config.json (not from the live cache)
 	type cfgSwitch struct {
-		Name     string `json:"name"`
-		IP       string `json:"ip"`
-		Password string `json:"password"`
-		Model    string `json:"model"`
-		PortCount int   `json:"port_count"`
-		Enabled  bool   `json:"enabled"`
+		Name      string `json:"name"`
+		IP        string `json:"ip"`
+		Password  string `json:"password"`
+		Model     string `json:"model"`
+		PortCount int    `json:"port_count"`
+		Enabled   bool   `json:"enabled"`
 	}
 	type cfgRoot struct {
 		Title           string      `json:"title"`
@@ -132,8 +130,6 @@ func (s *Server) handleAPIDocs(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "api_docs.html", data)
 }
 
-
-
 func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:   s.Config.Title(),
@@ -141,4 +137,3 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	}
 	s.renderTemplate(w, "map.html", data)
 }
-

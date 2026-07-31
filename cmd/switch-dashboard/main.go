@@ -35,14 +35,38 @@ func (a *appConfig) applyConfig(cfg *config.Config) {
 	a.mu.Unlock()
 }
 
-func (a *appConfig) Title() string                { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.Title }
-func (a *appConfig) RefreshInterval() int         { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.RefreshInterval }
-func (a *appConfig) EnabledColumns() []string     { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.EnabledColumns }
-func (a *appConfig) GridColumns() string          { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.GridColumns }
-func (a *appConfig) PortsWrapThreshold() int      { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.PortsWrapThreshold }
-func (a *appConfig) ColumnWidths() map[string]int { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.ColumnWidths }
-func (a *appConfig) ColumnOrder() []string        { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.ColumnOrder }
-func (a *appConfig) Version() string              { return a.version }
+func (a *appConfig) Title() string { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.Title }
+func (a *appConfig) RefreshInterval() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.RefreshInterval
+}
+func (a *appConfig) EnabledColumns() []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.EnabledColumns
+}
+func (a *appConfig) GridColumns() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.GridColumns
+}
+func (a *appConfig) PortsWrapThreshold() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.PortsWrapThreshold
+}
+func (a *appConfig) ColumnWidths() map[string]int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.ColumnWidths
+}
+func (a *appConfig) ColumnOrder() []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.ColumnOrder
+}
+func (a *appConfig) Version() string { return a.version }
 func (a *appConfig) Switches() []config.SwitchConfig {
 	a.mu.RLock()
 	defer a.mu.RUnlock()

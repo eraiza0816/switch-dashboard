@@ -10,8 +10,7 @@ import (
 )
 
 func (s *Server) handleAPIGetLogs(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.LogBuffer.Get())
+	s.writeJSON(w, http.StatusOK, s.LogBuffer.Get())
 }
 
 func (s *Server) handleAPISetLogLevel(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +18,7 @@ func (s *Server) handleAPISetLogLevel(w http.ResponseWriter, r *http.Request) {
 		Level string `json:"level"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
@@ -34,7 +33,7 @@ func (s *Server) handleAPISetLogLevel(w http.ResponseWriter, r *http.Request) {
 	case "ERROR":
 		lvl = slog.LevelError
 	default:
-		http.Error(w, "invalid level, use DEBUG/INFO/WARN/ERROR", http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "invalid level, use DEBUG/INFO/WARN/ERROR")
 		return
 	}
 
@@ -50,15 +49,13 @@ func (s *Server) handleAPISetLogLevel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "level": req.Level})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "level": req.Level})
 }
 
 func (s *Server) handleAPIClearLogs(w http.ResponseWriter, r *http.Request) {
 	s.LogBuffer.Clear()
 	s.Logger.Info("logs cleared")
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleAPIDownloadLogs(w http.ResponseWriter, r *http.Request) {
@@ -90,5 +87,3 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	s.renderTemplate(w, "logs.html", data)
 }
-
-

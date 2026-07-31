@@ -26,27 +26,27 @@ type PortState struct {
 }
 
 type SwitchData struct {
-	Name       string            `json:"name"`
-	IP         string            `json:"ip"`
-	Model      string            `json:"model"`
-	MAC        string            `json:"mac"`
-	Uptime     string            `json:"uptime"`
-	Firmware   string            `json:"firmware"`
-	Hostname   string            `json:"hostname"`
-	Ports      []PortState       `json:"ports"`
-	MACTable   []MACEntry        `json:"mac_table"`
-	MACScraped int64             `json:"mac_timestamp"`
-	Status     string            `json:"status"`
-	Error      string            `json:"error,omitempty"`
-	Timestamp  float64           `json:"timestamp"`
-	DHCP       SnoopingStatus    `json:"dhcp_snooping"`
-	IGMP       IGMPStatus        `json:"igmp"`
-	Jumbo      JumboFrameStatus  `json:"jumbo_frame"`
-	EEE        []EEEStatus       `json:"eee,omitempty"`
-	VLANList   []VLANItem        `json:"vlan_list,omitempty"`
-	LAG        []LAGStatus       `json:"lag,omitempty"`
-	Mirror     *MirrorStatus     `json:"mirror,omitempty"`
-	Bandwidth  []BWStatus        `json:"bandwidth,omitempty"`
+	Name       string           `json:"name"`
+	IP         string           `json:"ip"`
+	Model      string           `json:"model"`
+	MAC        string           `json:"mac"`
+	Uptime     string           `json:"uptime"`
+	Firmware   string           `json:"firmware"`
+	Hostname   string           `json:"hostname"`
+	Ports      []PortState      `json:"ports"`
+	MACTable   []MACEntry       `json:"mac_table"`
+	MACScraped int64            `json:"mac_timestamp"`
+	Status     string           `json:"status"`
+	Error      string           `json:"error,omitempty"`
+	Timestamp  float64          `json:"timestamp"`
+	DHCP       SnoopingStatus   `json:"dhcp_snooping"`
+	IGMP       IGMPStatus       `json:"igmp"`
+	Jumbo      JumboFrameStatus `json:"jumbo_frame"`
+	EEE        []EEEStatus      `json:"eee,omitempty"`
+	VLANList   []VLANItem       `json:"vlan_list,omitempty"`
+	LAG        []LAGStatus      `json:"lag,omitempty"`
+	Mirror     *MirrorStatus    `json:"mirror,omitempty"`
+	Bandwidth  []BWStatus       `json:"bandwidth,omitempty"`
 }
 
 type MACEntry struct {
@@ -56,6 +56,23 @@ type MACEntry struct {
 	VLAN   string `json:"vlan"`
 	Vendor string `json:"vendor,omitempty"`
 	Host   string `json:"host,omitempty"`
+}
+
+// PortStatus maps a link/enabled state to the dashboard status, link and
+// duplex display strings.
+func PortStatus(link, enabled int) (status, linkStr, duplex string) {
+	status = "down"
+	linkStr = "Link Down"
+	if link > 0 && enabled != 0 {
+		status = "up"
+		linkStr = "Link Up"
+		duplex = "Full"
+	}
+	if enabled == 0 {
+		status = "disable"
+		linkStr = "Disabled"
+	}
+	return status, linkStr, duplex
 }
 
 type TopologyNode struct {
@@ -77,14 +94,14 @@ type TopologyNode struct {
 }
 
 type TopologyLink struct {
-	Source      string `json:"source"`
-	Target      string `json:"target"`
-	SourcePort  string `json:"source_port"`
-	TargetPort  string `json:"target_port"`
-	Speed       string `json:"speed"`
-	Type        string `json:"type"`
-	TXBPS       int64  `json:"tx_bps,omitempty"`
-	RXBPS       int64  `json:"rx_bps,omitempty"`
+	Source     string `json:"source"`
+	Target     string `json:"target"`
+	SourcePort string `json:"source_port"`
+	TargetPort string `json:"target_port"`
+	Speed      string `json:"speed"`
+	Type       string `json:"type"`
+	TXBPS      int64  `json:"tx_bps,omitempty"`
+	RXBPS      int64  `json:"rx_bps,omitempty"`
 }
 
 type Topology struct {
@@ -99,10 +116,10 @@ type HistoryPoint struct {
 }
 
 type Cache struct {
-	mu        sync.RWMutex
-	switches  map[string]*SwitchData
-	speeds    map[string]map[string]PortSpeeds
-	lastPoll  time.Time
+	mu       sync.RWMutex
+	switches map[string]*SwitchData
+	speeds   map[string]map[string]PortSpeeds
+	lastPoll time.Time
 }
 
 type PortSpeeds struct {

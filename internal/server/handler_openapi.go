@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
@@ -53,7 +52,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/switches/{ip}/transceiver": map[string]any{
 				"get": map[string]any{
-					"summary":     "SFP EEPROM information",
+					"summary": "SFP EEPROM information",
 					"parameters": []map[string]any{
 						{"name": "ip", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -64,7 +63,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/switches/{ip}/refresh_mac": map[string]any{
 				"post": map[string]any{
-					"summary":     "Refresh MAC forwarding table",
+					"summary": "Refresh MAC forwarding table",
 					"parameters": []map[string]any{
 						{"name": "ip", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -75,7 +74,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/switches/{ip}/backup": map[string]any{
 				"post": map[string]any{
-					"summary":     "Download switch configuration backup",
+					"summary": "Download switch configuration backup",
 					"parameters": []map[string]any{
 						{"name": "ip", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -86,7 +85,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/switches/{ip}/reboot": map[string]any{
 				"post": map[string]any{
-					"summary":     "Reboot switch",
+					"summary": "Reboot switch",
 					"parameters": []map[string]any{
 						{"name": "ip", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -164,7 +163,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/reset": map[string]any{
 				"post": map[string]any{
-					"summary":     "Reset cumulative counters",
+					"summary": "Reset cumulative counters",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Counters reset"},
 					},
@@ -172,7 +171,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/logs": map[string]any{
 				"get": map[string]any{
-					"summary":     "Get server log lines",
+					"summary": "Get server log lines",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Log lines array"},
 					},
@@ -188,7 +187,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/logs/clear": map[string]any{
 				"post": map[string]any{
-					"summary":     "Clear server logs",
+					"summary": "Clear server logs",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Logs cleared"},
 					},
@@ -196,7 +195,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/backups": map[string]any{
 				"get": map[string]any{
-					"summary":     "List configuration backups",
+					"summary": "List configuration backups",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Backup list"},
 					},
@@ -204,7 +203,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/backups/{filename}/download": map[string]any{
 				"get": map[string]any{
-					"summary":     "Download a backup file",
+					"summary": "Download a backup file",
 					"parameters": []map[string]any{
 						{"name": "filename", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -215,7 +214,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/backups/{filename}": map[string]any{
 				"delete": map[string]any{
-					"summary":     "Delete a backup file",
+					"summary": "Delete a backup file",
 					"parameters": []map[string]any{
 						{"name": "filename", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
 					},
@@ -226,13 +225,13 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/vendors": map[string]any{
 				"get": map[string]any{
-					"summary":     "Get custom MAC vendor mappings",
+					"summary": "Get custom MAC vendor mappings",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Vendor mappings"},
 					},
 				},
 				"post": map[string]any{
-					"summary":     "Save custom MAC vendor mappings",
+					"summary": "Save custom MAC vendor mappings",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Vendor mappings saved"},
 					},
@@ -240,7 +239,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/vendors/update_oui": map[string]any{
 				"post": map[string]any{
-					"summary":     "Download IEEE OUI database",
+					"summary": "Download IEEE OUI database",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "OUI database updated"},
 					},
@@ -248,7 +247,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/clients/update_host": map[string]any{
 				"post": map[string]any{
-					"summary": "Override client hostname in topology",
+					"summary":     "Override client hostname in topology",
 					"description": "Persists a MAC-to-hostname mapping so the topology graph shows a custom nickname for a client device.",
 					"requestBody": map[string]any{
 						"content": map[string]any{
@@ -270,7 +269,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/clients/update_type": map[string]any{
 				"post": map[string]any{
-					"summary": "Set client device type",
+					"summary":     "Set client device type",
 					"description": "Assigns a device type (laptop, nas, ipcam, ...) to a client for icon rendering in the topology map.",
 					"requestBody": map[string]any{
 						"content": map[string]any{
@@ -312,7 +311,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/clients/import_csv": map[string]any{
 				"post": map[string]any{
-					"summary": "Import client hostnames from CSV",
+					"summary":     "Import client hostnames from CSV",
 					"description": "Accepts a multipart file upload. CSV columns: hostname,mac",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Import result"},
@@ -330,7 +329,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 			},
 			"/api/device_types/raw": map[string]any{
 				"get": map[string]any{
-					"summary":     "Get raw device types YAML",
+					"summary": "Get raw device types YAML",
 					"responses": map[string]any{
 						"200": map[string]any{"description": "Raw YAML content"},
 					},
@@ -375,7 +374,7 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 					},
 				},
 				"post": map[string]any{
-					"summary": "Save topology node layout positions",
+					"summary":     "Save topology node layout positions",
 					"description": "Persists the current interactive map node positions to the server.",
 					"requestBody": map[string]any{
 						"content": map[string]any{
@@ -421,14 +420,14 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 				"PortState": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"port":    map[string]any{"type": "string"},
-						"status":  map[string]any{"type": "string"},
-						"link":    map[string]any{"type": "string"},
-						"speed":   map[string]any{"type": "string"},
-						"tx_bytes":  map[string]any{"type": "integer"},
-						"rx_bytes":  map[string]any{"type": "integer"},
-						"cum_tx":    map[string]any{"type": "integer"},
-						"cum_rx":    map[string]any{"type": "integer"},
+						"port":         map[string]any{"type": "string"},
+						"status":       map[string]any{"type": "string"},
+						"link":         map[string]any{"type": "string"},
+						"speed":        map[string]any{"type": "string"},
+						"tx_bytes":     map[string]any{"type": "integer"},
+						"rx_bytes":     map[string]any{"type": "integer"},
+						"cum_tx":       map[string]any{"type": "integer"},
+						"cum_rx":       map[string]any{"type": "integer"},
 						"speed_tx_bps": map[string]any{"type": "integer"},
 						"speed_rx_bps": map[string]any{"type": "integer"},
 					},
@@ -437,6 +436,5 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(spec)
+	s.writeJSON(w, http.StatusOK, spec)
 }

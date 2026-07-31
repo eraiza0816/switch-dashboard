@@ -110,14 +110,14 @@ func (p *Poller) seedMockData() {
 	}
 
 	swData := &server.SwitchData{
-		Name:     p.name,
-		IP:       p.ip,
-		Model:    "RTLPlayground Simulator",
-		MAC:      "1c:2a:a3:23:00:02",
-		Firmware: "v0.2.19",
-		Hostname: "rtlplayground",
-		Ports:    ports,
-		Status:   "online",
+		Name:      p.name,
+		IP:        p.ip,
+		Model:     "RTLPlayground Simulator",
+		MAC:       "1c:2a:a3:23:00:02",
+		Firmware:  "v0.2.19",
+		Hostname:  "rtlplayground",
+		Ports:     ports,
+		Status:    "online",
 		Timestamp: now,
 		MACTable: []server.MACEntry{
 			{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001", Vendor: "Intel Corporate"},
@@ -163,12 +163,12 @@ func (p *Poller) poll() {
 		port := entry.PortNum
 		key := p.ip + ":" + itoa(int64(port))
 
-		txPackets := parseHex(entry.TxG)
-		rxPackets := parseHex(entry.RxG)
+		txPackets := rtlplayground.ParseHex(entry.TxG)
+		rxPackets := rtlplayground.ParseHex(entry.RxG)
 		txBytes := txPackets * 800
 		rxBytes := rxPackets * 800
 
-		speedStr := linkSpeedToString(entry.Link)
+		speedStr := rtlplayground.LinkSpeedString(entry.Link)
 		speedBPS := ParseLinkSpeed(speedStr)
 
 		prev := p.counters[key]
@@ -207,18 +207,7 @@ func (p *Poller) poll() {
 			speedRX = 0
 		}
 
-		statusStr := "down"
-		linkStr := "Link Down"
-		duplex := ""
-		if entry.Link > 0 && entry.Enabled != 0 {
-			statusStr = "up"
-			linkStr = "Link Up"
-			duplex = "Full"
-		}
-		if entry.Enabled == 0 {
-			statusStr = "disable"
-			linkStr = "Disabled"
-		}
+		statusStr, linkStr, duplex := server.PortStatus(entry.Link, entry.Enabled)
 
 		noteKey := p.ip + ":" + itoa(int64(port))
 		ps := server.PortState{
@@ -255,15 +244,15 @@ func (p *Poller) poll() {
 	}
 
 	swData := &server.SwitchData{
-		Name:     p.name,
-		IP:       p.ip,
-		Model:    p.model,
-		Status:   "online",
-		Ports:    ports,
+		Name:      p.name,
+		IP:        p.ip,
+		Model:     p.model,
+		Status:    "online",
+		Ports:     ports,
 		Timestamp: now,
-		DHCP:     server.SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
-		IGMP:     server.IGMPStatus{Enabled: false},
-		Jumbo:    server.JumboFrameStatus{Enabled: false, Size: "Disabled"},
+		DHCP:      server.SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
+		IGMP:      server.IGMPStatus{Enabled: false},
+		Jumbo:     server.JumboFrameStatus{Enabled: false, Size: "Disabled"},
 	}
 
 	if info != nil {
@@ -379,42 +368,4 @@ func (p *Poller) fetchData() ([]rtlplayground.StatusEntry, *rtlplayground.Inform
 	macTable, _ := p.client.ScrapeAllMACTable()
 
 	return status, info, sfpDiag, macTable
-}
-
-func linkSpeedToString(link int) string {
-	switch link {
-	case 0:
-		return ""
-	case 1:
-		return "100M"
-	case 2:
-		return "1G"
-	case 3:
-		return "2.5G"
-	case 4:
-		return "10G"
-	default:
-		return "Auto"
-	}
-}
-
-func parseHex(s string) int64 {
-	if len(s) < 3 || s[:2] != "0x" {
-		return 0
-	}
-	var v int64
-	for _, c := range s[2:] {
-		v <<= 4
-		switch {
-		case c >= '0' && c <= '9':
-			v |= int64(c - '0')
-		case c >= 'a' && c <= 'f':
-			v |= int64(c - 'a' + 10)
-		case c >= 'A' && c <= 'F':
-			v |= int64(c - 'A' + 10)
-		default:
-			return 0
-		}
-	}
-	return v
 }

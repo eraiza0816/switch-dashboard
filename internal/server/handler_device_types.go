@@ -98,12 +98,10 @@ func (s *Server) handleAPIGetDeviceTypes(w http.ResponseWriter, r *http.Request)
 	}
 	var parsed map[string]deviceTypeDef
 	if err := yaml.Unmarshal(content, &parsed); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{})
+		s.writeJSON(w, http.StatusOK, map[string]any{})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(parsed)
+	s.writeJSON(w, http.StatusOK, parsed)
 }
 
 // handleAPIDeviceTypesRaw serves and updates the raw device_types YAML file.
@@ -115,30 +113,29 @@ func (s *Server) handleAPIDeviceTypesRaw(w http.ResponseWriter, r *http.Request)
 			Content string `json:"content"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+			s.writeError(w, http.StatusBadRequest, "bad request")
 			return
 		}
 		if len(req.Content) == 0 {
-			http.Error(w, `{"error":"content cannot be empty"}`, http.StatusBadRequest)
+			s.writeError(w, http.StatusBadRequest, "content cannot be empty")
 			return
 		}
 		var parsed map[string]deviceTypeDef
 		if err := yaml.Unmarshal([]byte(req.Content), &parsed); err != nil {
-			http.Error(w, `{"error":"invalid yaml"}`, http.StatusBadRequest)
+			s.writeError(w, http.StatusBadRequest, "invalid yaml")
 			return
 		}
 		for k, v := range parsed {
 			if v.Label == "" {
-				http.Error(w, `{"error":"entry '`+k+`' must contain a 'label' key"}`, http.StatusBadRequest)
+				s.writeError(w, http.StatusBadRequest, "entry '"+k+"' must contain a 'label' key")
 				return
 			}
 		}
 		if err := os.WriteFile(path, []byte(req.Content), 0644); err != nil {
-			http.Error(w, `{"error":"failed to save"}`, http.StatusInternalServerError)
+			s.writeError(w, http.StatusInternalServerError, "failed to save")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
 
@@ -146,6 +143,5 @@ func (s *Server) handleAPIDeviceTypesRaw(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		content = []byte(defaultDeviceTypesYAML)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"content": string(content)})
+	s.writeJSON(w, http.StatusOK, map[string]string{"content": string(content)})
 }
