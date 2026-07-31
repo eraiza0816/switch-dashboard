@@ -14,7 +14,7 @@
 - **設定バックアップ & リストア**: Web UI から設定のダウンロード・アップロード
 - **ファームウェア更新**: Web インターフェースからファームウェアをアップロード
 - **リモート再起動 & コマンド実行**: 確認付き再起動、および CLI コマンド実行
-- **ネットワークトポロジーマップ**: ポート単位の接続クライアント表示、ホスト名上書き対応、ドラッグ＆ドロップレイアウト
+- **ネットワークトポロジーマップ**: ポート単位の接続クライアント表示、スイッチ間リンク・インフラ機器・アンマネージドスイッチ表示、デバイスタイプ別アイコン（Iconify）、ホスト名上書き、ドラッグ＆ドロップレイアウト、10秒自動更新、リンク帯域表示、CSV一括インポート
 - **ログビューア**: ブラウザ上でサーバーログ表示、レベル制御、ダウンロード
 - **設定エディタ**: Web ベースのスイッチ・ダッシュボード設定編集
 - **ダークガラスモーフィック UI**: カスタムタイポグラフィ、すりガラス風コンポーネント
@@ -101,16 +101,22 @@ docker run -d --name switch-dashboard -p 8081:8081 \
 | POST | `/api/switches/:ip/reboot` | スイッチを再起動 |
 | POST | `/api/switches/:ip/upload` | ファームウェアをアップロード |
 | POST | `/api/switches/:ip/cmd` | CLI コマンドを実行 |
+| GET | `/api/switches/:ip/image` | スイッチの型番画像（device-templates/ から） |
 | GET | `/api/speeds` | ポートごとのリアルタイム帯域（bps） |
 | GET | `/api/history?ip=...&port=...&range=live\|1h\|24h` | 帯域履歴 |
 | POST | `/api/notes` | ポート注釈を保存 |
 | POST | `/api/reset` | 累積カウンターをリセット |
-| GET | `/api/topology` | MAC フォワーディングテーブルからネットワークグラフを生成 |
+| GET | `/api/topology` | MAC フォワーディングテーブルからネットワークグラフを生成（スイッチ間リンク・オフラインクライアント・インフラ機器含む） |
 | GET/POST | `/api/settings` | UI 設定 |
 | GET/POST | `/api/config/settings` | ダッシュボード設定 |
 | GET/POST | `/api/vendors` | MAC ベンダーカスタムマッピング |
 | POST | `/api/vendors/update_oui` | IEEE OUI データベースをダウンロード |
+| GET | `/api/device_types` | デバイスタイプ定義（マップのアイコン表示用） |
+| GET/POST | `/api/device_types/raw` | デバイスタイプ YAML の取得・保存 |
 | POST | `/api/clients/update_host` | トポロジー上のクライアントホスト名を上書き |
+| POST | `/api/clients/update_type` | クライアントのデバイスタイプを設定 |
+| POST | `/api/clients/delete` | クライアントを削除（Forget Device） |
+| POST | `/api/clients/import_csv` | クライアント名を CSV から一括インポート |
 | GET/POST | `/api/layout_positions` | トポロジーノードのレイアウト位置 |
 | GET | `/api/logs` | サーバーログ行を取得 |
 | POST | `/api/logs/level` | ログレベルを変更 |

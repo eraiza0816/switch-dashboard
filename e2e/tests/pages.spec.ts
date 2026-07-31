@@ -30,11 +30,11 @@ test.describe('Page navigation and rendering', () => {
 
   test('navigation links work between pages', async ({ page }) => {
     await page.goto('/');
-    await page.locator('a[href="/config"]').click();
+    await page.locator('.nav-links a[href="/config"]').click();
     await expect(page.locator('h1')).toContainText('Settings');
-    await page.locator('a[href="/logs"]').click();
+    await page.locator('.nav-links a[href="/logs"]').click();
     await expect(page.locator('h1')).toContainText('Logs');
-    await page.locator('a[href="/"]').click();
+    await page.locator('.nav-links a[href="/"]').click();
     await expect(page.locator('h1')).toHaveText('E2E Test');
   });
 });

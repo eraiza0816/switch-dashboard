@@ -37,6 +37,21 @@
   </div>
 </div>
 
+<div class="legend-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 16px;margin-bottom:24px;font-size:11px;color:#8b949e;flex-wrap:wrap;box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+  <span style="font-weight:600;color:#e1e4e8;">PORT STATUS:</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#1f6feb;border-radius:2px;"></span> 10G</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#58a6ff;border-radius:2px;"></span> 2.5G / 2G</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#3fb950;border-radius:2px;"></span> 1G (1000M)</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#f08a24;border-radius:2px;"></span> 100M / 10M</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#57606a;border-radius:2px;"></span> Down</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#353c45;border-radius:2px;"></span> Disabled</span>
+  <span style="display:flex;align-items:center;gap:6px;border-left:1px solid #30363d;padding-left:12px;margin-left:4px;">
+    <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:#8b949e;margin-right:2px;display:inline-block;vertical-align:middle;"><path d="M 4,8 h 5 v -3 h 6 v 3 h 5 v 11 h -16 z" /></svg> Copper (RJ45)
+  </span>
+  <span style="display:flex;align-items:center;gap:6px;">
+    <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:#8b949e;margin-right:2px;display:inline-block;vertical-align:middle;"><path d="M 4,5 h 3 v 3 h 10 v -3 h 3 v 14 h -16 z" /></svg> Fiber (SFP+)
+  </span>
+</div>
 <div class="dashboard-grid" id="app"></div>
 
 <div class="modal-overlay" id="graph-overlay">
@@ -97,6 +112,10 @@
 <div id="toast-box" class="toast-container" style="display:none;">
   <span id="toast-icon"></span>
   <span id="toast-message"></span>
+</div>
+
+<div class="footer">
+  <div>Refreshes every {{ .Refresh }} seconds &middot; <a href="/config" style="color:#8b949e">Configure Nodes</a> &middot; <a href="/api-docs" style="color:#8b949e">API Reference</a> &middot; <span class="version-badge">v{{ .Version }}</span></div>
 </div>
 
 <script>

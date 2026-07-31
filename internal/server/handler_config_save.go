@@ -71,12 +71,34 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 		cfg.Switches = append(cfg.Switches, entry)
 	}
 
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err == nil {
-		configPath := s.ConfigPath
-		if configPath == "" {
-			configPath = "config.json"
+	configPath := s.ConfigPath
+	if configPath == "" {
+		configPath = "config.json"
+	}
+
+	// Preserve keys that are not edited on the web form (infrastructure
+	// devices, unmanaged switches, notes, settings, client overrides, ...).
+	existing := make(map[string]json.RawMessage)
+	if data, err := os.ReadFile(configPath); err == nil {
+		json.Unmarshal(data, &existing)
+	}
+	merged := make(map[string]json.RawMessage)
+	for k, v := range existing {
+		merged[k] = v
+	}
+	if raw, err := json.Marshal(cfg.Title); err == nil {
+		merged["title"] = raw
+	}
+	if raw, err := json.Marshal(cfg.RefreshInterval); err == nil {
+		merged["refresh_interval"] = raw
+	}
+	if len(cfg.Switches) > 0 {
+		if raw, err := json.Marshal(cfg.Switches); err == nil {
+			merged["switches"] = raw
 		}
+	}
+	data, err := json.MarshalIndent(merged, "", "  ")
+	if err == nil {
 		os.WriteFile(configPath, data, 0644)
 		s.Logger.Info("config saved", "switches", len(cfg.Switches))
 	}

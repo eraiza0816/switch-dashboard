@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -23,24 +24,45 @@ import (
 )
 
 type appConfig struct {
-	title              string
-	refresh            int
-	enabledColumns     []string
-	gridColumns        string
-	portsWrapThreshold int
-	columnWidths       map[string]int
-	columnOrder        []string
-	version            string
+	mu      sync.RWMutex
+	cfg     *config.Config
+	version string
 }
 
-func (a *appConfig) Title() string                    { return a.title }
-func (a *appConfig) RefreshInterval() int             { return a.refresh }
-func (a *appConfig) EnabledColumns() []string         { return a.enabledColumns }
-func (a *appConfig) GridColumns() string              { return a.gridColumns }
-func (a *appConfig) PortsWrapThreshold() int          { return a.portsWrapThreshold }
-func (a *appConfig) ColumnWidths() map[string]int     { return a.columnWidths }
-func (a *appConfig) ColumnOrder() []string            { return a.columnOrder }
-func (a *appConfig) Version() string                  { return a.version }
+func (a *appConfig) applyConfig(cfg *config.Config) {
+	a.mu.Lock()
+	a.cfg = cfg
+	a.mu.Unlock()
+}
+
+func (a *appConfig) Title() string                { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.Title }
+func (a *appConfig) RefreshInterval() int         { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.RefreshInterval }
+func (a *appConfig) EnabledColumns() []string     { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.EnabledColumns }
+func (a *appConfig) GridColumns() string          { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.GridColumns }
+func (a *appConfig) PortsWrapThreshold() int      { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.PortsWrapThreshold }
+func (a *appConfig) ColumnWidths() map[string]int { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.ColumnWidths }
+func (a *appConfig) ColumnOrder() []string        { a.mu.RLock(); defer a.mu.RUnlock(); return a.cfg.ColumnOrder }
+func (a *appConfig) Version() string              { return a.version }
+func (a *appConfig) Switches() []config.SwitchConfig {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Switches
+}
+func (a *appConfig) InfrastructureDevices() []config.InfraDevice {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.InfrastructureDevices
+}
+func (a *appConfig) UnmanagedSwitches() []config.UnmanagedSwitch {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.UnmanagedSwitches
+}
+func (a *appConfig) IgnoredMACs() []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Settings.IgnoredMACs
+}
 
 func main() {
 	dataDir := flag.String("d", "", "data directory (default: ~/.local/share/switch-dashboard)")
@@ -87,16 +109,8 @@ func main() {
 	logger.Info("starting switch-dashboard", "data_dir", dd, "config", cp, "log_level", logLevel.String())
 
 	cache := server.NewCache()
-	enabledCols := cfg.EnabledColumns
-	if len(enabledCols) == 0 {
-		enabledCols = []string{"port", "status", "speed", "packets", "bytes", "info", "notes"}
-	}
-	cfgProvider := &appConfig{
-		title:          cfg.Title,
-		refresh:        cfg.RefreshInterval,
-		enabledColumns: enabledCols,
-		version:        "0.1.0",
-	}
+	cfgProvider := &appConfig{version: "0.1.0"}
+	cfgProvider.applyConfig(cfg)
 
 	histPath := filepath.Join(dd, "history.duckdb")
 	histStore, err := history.NewStore(histPath)
@@ -122,6 +136,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		cfgProvider.applyConfig(cfg2)
 		logger.Info("config reloaded", "title", cfg2.Title, "switches", len(cfg2.ActiveSwitches()))
 		server.SetActiveSwitchesGauge(len(cfg2.ActiveSwitches()))
 		return nil
@@ -137,11 +152,16 @@ func main() {
 		server.SetDuckDBReadyGauge(false)
 	}
 	server.SetActiveSwitchesGauge(len(cfg.ActiveSwitches()))
-	srv.ClientHostsPath = filepath.Join(dd, "clients.json")
+	srv.ClientsPath = filepath.Join(dd, "clients.json")
 	srv.LayoutPositionsPath = filepath.Join(dd, "layout_positions.json")
 	srv.OUI = oui.New()
 	srv.DataDir = dd
 	srv.ConfigPath = cp
+	srv.DeviceTypesPath = filepath.Join(dd, "device_types.yaml")
+	srv.DeviceTemplatesDir = filepath.Join(dd, "device-templates")
+	if err := os.MkdirAll(srv.DeviceTemplatesDir, 0755); err != nil {
+		logger.Warn("cannot create device-templates dir", "dir", srv.DeviceTemplatesDir, "error", err)
+	}
 
 	notes := cfg.Notes
 	if notes == nil {
