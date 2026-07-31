@@ -487,6 +487,43 @@ function toggleIgmpTable(ip) {
   }
 }
 
+const EXTRA_SECTIONS = ['eee', 'vlan', 'lag', 'mirror', 'bandwidth'] as const;
+type ExtraSection = typeof EXTRA_SECTIONS[number];
+
+function getExtraSectionState(ip: string, section: ExtraSection) {
+  let states: Record<string, Record<string, { expanded: boolean }>> = {};
+  try {
+    const stored = localStorage.getItem('extra_section_states');
+    if (stored) states = JSON.parse(stored);
+  } catch (e) {
+    console.error("Failed to load extra_section_states from localStorage", e);
+  }
+  if (!states[ip]) states[ip] = {};
+  if (!states[ip][section]) states[ip][section] = { expanded: false };
+  return states[ip][section];
+}
+
+function toggleExtraSection(ip: string, section: ExtraSection) {
+  let states: Record<string, Record<string, { expanded: boolean }>> = {};
+  try {
+    const stored = localStorage.getItem('extra_section_states');
+    if (stored) states = JSON.parse(stored);
+  } catch (e) {
+    console.error("Failed to load extra_section_states from localStorage", e);
+  }
+  if (!states[ip]) states[ip] = {};
+  if (!states[ip][section]) states[ip][section] = { expanded: false };
+  states[ip][section].expanded = !states[ip][section].expanded;
+  localStorage.setItem('extra_section_states', JSON.stringify(states));
+
+  const content = document.querySelector(`.${section}-content-${CSS.escape(ip)}`) as HTMLElement | null;
+  const arrow = document.querySelector(`.${section}-toggle-arrow-${CSS.escape(ip)}`) as HTMLElement | null;
+  if (content && arrow) {
+    content.style.display = states[ip][section].expanded ? 'block' : 'none';
+    arrow.style.transform = states[ip][section].expanded ? 'rotate(90deg)' : 'rotate(0deg)';
+  }
+}
+
 function filterMacTable(ip) {
   const state = getMacState(ip);
   const fMac = document.querySelector(`.mac-filter-mac-${CSS.escape(ip)}`) as HTMLInputElement | null;
@@ -1035,6 +1072,189 @@ function renderSwitch(sw) {
     </div>
   `;
 
+  // EEE section
+  const eeeState = getExtraSectionState(sw.ip, 'eee');
+  const isEeeExpanded = eeeState.expanded;
+  const eeeData = sw.eee || [];
+  const eeeSectionHtml = `
+    <div class="eee-section" style="border-top: 1px solid #30363d; padding: 12px 20px; background: rgba(22, 27, 34, 0.2);">
+      <div class="eee-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleExtraSection('${sw.ip}', 'eee')">
+        <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="eee-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${isEeeExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}; font-size: 10px;">&gt;</span>
+          <span>EEE Status (${eeeData.length} ports)</span>
+        </h4>
+      </div>
+      <div class="eee-content-${sw.ip}" style="display: ${isEeeExpanded ? 'block' : 'none'}; margin-top: 12px;">
+        <div style="border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+            <thead>
+              <tr style="background: #161b22; border-bottom: 1px solid #30363d;">
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Port</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Active</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Status</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">LP Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eeeData.length === 0 ? '<tr><td colspan="4" style="padding: 12px; text-align: center; color: #8b949e;">No EEE data</td></tr>' : eeeData.map(e => `
+                <tr style="border-bottom: 1px solid #21262d;">
+                  <td style="padding: 8px 12px; font-weight: 600; color: #58a6ff;">${e.port}</td>
+                  <td style="padding: 8px 12px; color: ${e.active ? '#3fb950' : '#8b949e'};">${e.active ? 'Active' : 'Inactive'}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${e.status || '-'}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${e.lp_status || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // VLAN section
+  const vlanState = getExtraSectionState(sw.ip, 'vlan');
+  const isVlanExpanded = vlanState.expanded;
+  const vlanData = sw.vlan_list || [];
+  const vlanSectionHtml = `
+    <div class="vlan-section" style="border-top: 1px solid #30363d; padding: 12px 20px; background: rgba(22, 27, 34, 0.2);">
+      <div class="vlan-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleExtraSection('${sw.ip}', 'vlan')">
+        <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="vlan-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${isVlanExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}; font-size: 10px;">&gt;</span>
+          <span>VLAN List (${vlanData.length} entries)</span>
+        </h4>
+      </div>
+      <div class="vlan-content-${sw.ip}" style="display: ${isVlanExpanded ? 'block' : 'none'}; margin-top: 12px;">
+        <div style="border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+            <thead>
+              <tr style="background: #161b22; border-bottom: 1px solid #30363d;">
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">VLAN ID</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${vlanData.length === 0 ? '<tr><td colspan="2" style="padding: 12px; text-align: center; color: #8b949e;">No VLANs configured</td></tr>' : vlanData.map(v => `
+                <tr style="border-bottom: 1px solid #21262d;">
+                  <td style="padding: 8px 12px; font-weight: 600; color: #58a6ff;">${v.id}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${v.name || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // LAG section
+  const lagState = getExtraSectionState(sw.ip, 'lag');
+  const isLagExpanded = lagState.expanded;
+  const lagData = sw.lag || [];
+  const lagSectionHtml = `
+    <div class="lag-section" style="border-top: 1px solid #30363d; padding: 12px 20px; background: rgba(22, 27, 34, 0.2);">
+      <div class="lag-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleExtraSection('${sw.ip}', 'lag')">
+        <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="lag-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${isLagExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}; font-size: 10px;">&gt;</span>
+          <span>LAG (${lagData.length} groups)</span>
+        </h4>
+      </div>
+      <div class="lag-content-${sw.ip}" style="display: ${isLagExpanded ? 'block' : 'none'}; margin-top: 12px;">
+        <div style="border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+            <thead>
+              <tr style="background: #161b22; border-bottom: 1px solid #30363d;">
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Group</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Members</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lagData.length === 0 ? '<tr><td colspan="3" style="padding: 12px; text-align: center; color: #8b949e;">No LAGs configured</td></tr>' : lagData.map(l => `
+                <tr style="border-bottom: 1px solid #21262d;">
+                  <td style="padding: 8px 12px; font-weight: 600; color: #58a6ff;">${l.number}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${l.members || '-'}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${l.hash || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Mirror section
+  const mirrorState = getExtraSectionState(sw.ip, 'mirror');
+  const isMirrorExpanded = mirrorState.expanded;
+  const mirror = sw.mirror;
+  const mirrorSectionHtml = `
+    <div class="mirror-section" style="border-top: 1px solid #30363d; padding: 12px 20px; background: rgba(22, 27, 34, 0.2);">
+      <div class="mirror-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleExtraSection('${sw.ip}', 'mirror')">
+        <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="mirror-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${isMirrorExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}; font-size: 10px;">&gt;</span>
+          <span>Port Mirroring</span>
+        </h4>
+      </div>
+      <div class="mirror-content-${sw.ip}" style="display: ${isMirrorExpanded ? 'block' : 'none'}; margin-top: 12px;">
+        <div style="border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden; padding: 12px;">
+          ${!mirror ? '<div style="color: #8b949e; font-size: 11px; text-align: center;">No mirror configuration</div>' : `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+              <div><span style="color: #8b949e;">Enabled</span></div>
+              <div style="color: ${mirror.enabled ? '#3fb950' : '#8b949e'};">${mirror.enabled ? 'Active' : 'Inactive'}</div>
+              <div><span style="color: #8b949e;">Mirror Port</span></div>
+              <div style="color: #c9d1d9;">${mirror.port || '-'}</div>
+              <div><span style="color: #8b949e;">RX Mirror</span></div>
+              <div style="color: #c9d1d9;">${mirror.mirror_rx || '-'}</div>
+              <div><span style="color: #8b949e;">TX Mirror</span></div>
+              <div style="color: #c9d1d9;">${mirror.mirror_tx || '-'}</div>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Bandwidth section
+  const bwState = getExtraSectionState(sw.ip, 'bandwidth');
+  const isBwExpanded = bwState.expanded;
+  const bwData = sw.bandwidth || [];
+  const bwSectionHtml = `
+    <div class="bandwidth-section" style="border-top: 1px solid #30363d; padding: 12px 20px; background: rgba(22, 27, 34, 0.2);">
+      <div class="bandwidth-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleExtraSection('${sw.ip}', 'bandwidth')">
+        <h4 style="font-size: 12px; font-weight: 600; color: #8b949e; display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="bandwidth-toggle-arrow-${sw.ip}" style="display: inline-block; transition: transform 0.2s; transform: ${isBwExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}; font-size: 10px;">&gt;</span>
+          <span>Bandwidth Control (${bwData.length} ports)</span>
+        </h4>
+      </div>
+      <div class="bandwidth-content-${sw.ip}" style="display: ${isBwExpanded ? 'block' : 'none'}; margin-top: 12px;">
+        <div style="border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+            <thead>
+              <tr style="background: #161b22; border-bottom: 1px solid #30363d;">
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Port</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Ingress Limit</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Ingress BW</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Egress Limit</th>
+                <th style="padding: 8px 12px; color: #8b949e; font-weight: 600;">Egress BW</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bwData.length === 0 ? '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #8b949e;">No bandwidth limits configured</td></tr>' : bwData.map(b => `
+                <tr style="border-bottom: 1px solid #21262d;">
+                  <td style="padding: 8px 12px; font-weight: 600; color: #58a6ff;">${b.port}</td>
+                  <td style="padding: 8px 12px; color: ${b.in_limited ? '#d29922' : '#8b949e'};">${b.in_limited ? 'Limited' : 'No Limit'}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${b.in_bw || '-'}</td>
+                  <td style="padding: 8px 12px; color: ${b.out_limited ? '#d29922' : '#8b949e'};">${b.out_limited ? 'Limited' : 'No Limit'}</td>
+                  <td style="padding: 8px 12px; color: #c9d1d9;">${b.out_bw || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
   return `<div class="switch-card">
     <div class="switch-header">
       <div style="display: flex; align-items: center; gap: 12px;">
@@ -1070,6 +1290,11 @@ function renderSwitch(sw) {
       <tbody>${portRows || `<tr><td colspan="${activeColumnOrder.length}" style="padding:20px;text-align:center;color:#b1bac4">No data</td></tr>`}</tbody>
     </table>
     ${errorBlock}
+    ${eeeSectionHtml}
+    ${vlanSectionHtml}
+    ${lagSectionHtml}
+    ${mirrorSectionHtml}
+    ${bwSectionHtml}
     ${macSectionHtml}
     ${igmpSectionHtml}
     <div class="last-update">Last update: ${formatTime(sw.timestamp)}</div>
@@ -1690,3 +1915,4 @@ window.handleDragEnd = handleDragEnd;
 window.handleDrop = handleDrop;
 window.filterMacTable = filterMacTable;
 window.saveMacScroll = saveMacScroll;
+(window as any).toggleExtraSection = toggleExtraSection;
