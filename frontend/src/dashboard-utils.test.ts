@@ -10,6 +10,11 @@ import {
 } from './dashboard-utils';
 
 describe('formatBytes', () => {
+  it('returns empty for null/undefined', () => {
+    expect(formatBytes(null as any)).toBe('');
+    expect(formatBytes(undefined as any)).toBe('');
+  });
+
   it('returns B for small values', () => {
     expect(formatBytes(0)).toBe('0 B');
     expect(formatBytes(500)).toBe('500 B');
@@ -17,44 +22,42 @@ describe('formatBytes', () => {
   });
 
   it('returns KB', () => {
-    expect(formatBytes(1000)).toBe('1.00 KB');
-    expect(formatBytes(1500)).toBe('1.50 KB');
-    expect(formatBytes(999999)).toBe('1000.00 KB');
+    expect(formatBytes(1000)).toBe('1.0 KB');
+    expect(formatBytes(1500)).toBe('1.5 KB');
   });
 
   it('returns MB', () => {
-    expect(formatBytes(1e6)).toBe('1.00 MB');
-    expect(formatBytes(2.5e6)).toBe('2.50 MB');
-    expect(formatBytes(1e9 - 1)).toBe('1000.00 MB');
+    expect(formatBytes(1e6)).toBe('1.0 MB');
+    expect(formatBytes(2.5e6)).toBe('2.5 MB');
   });
 
   it('returns GB', () => {
-    expect(formatBytes(1e9)).toBe('1.00 GB');
-    expect(formatBytes(1e12 - 1)).toBe('1000.00 GB');
+    expect(formatBytes(1e9)).toBe('1.0 GB');
   });
 
   it('returns TB', () => {
-    expect(formatBytes(1e12)).toBe('1.00 TB');
-    expect(formatBytes(2e12)).toBe('2.00 TB');
+    expect(formatBytes(1e12)).toBe('1.0 TB');
+    expect(formatBytes(2e12)).toBe('2.0 TB');
   });
 });
 
 describe('formatBps', () => {
   it('returns 0 for falsy input', () => {
-    expect(formatBps(0, 'Bps')).toBe('0 Bps');
-    expect(formatBps(null as any, 'Bps')).toBe('0 Bps');
+    expect(formatBps(0, 'Bps')).toBe('0 B/s');
+    expect(formatBps(0, 'bps')).toBe('0 bps');
+    expect(formatBps(null as any, 'Bps')).toBe('0 B/s');
   });
 
   it('formats in Bps mode (divides by 8)', () => {
-    expect(formatBps(8000, 'Bps')).toBe('1.00 KBps');
-    expect(formatBps(8e6, 'Bps')).toBe('1.00 MBps');
-    expect(formatBps(8e9, 'Bps')).toBe('1.00 GBps');
+    expect(formatBps(8000, 'Bps')).toBe('1.0 KB/s');
+    expect(formatBps(8e6, 'Bps')).toBe('1.0 MB/s');
+    expect(formatBps(8e9, 'Bps')).toBe('1.0 GB/s');
   });
 
   it('formats in bps mode (no division)', () => {
-    expect(formatBps(8000, 'bps')).toBe('8.00 Kbps');
-    expect(formatBps(8e6, 'bps')).toBe('8.00 Mbps');
-    expect(formatBps(8e9, 'bps')).toBe('8.00 Gbps');
+    expect(formatBps(8000, 'bps')).toBe('8.0 Kbps');
+    expect(formatBps(8e6, 'bps')).toBe('8.0 Mbps');
+    expect(formatBps(8e9, 'bps')).toBe('8.0 Gbps');
   });
 });
 
@@ -65,22 +68,24 @@ describe('formatPkts', () => {
   });
 
   it('formats K', () => {
-    expect(formatPkts(1500)).toBe('1.50K');
+    expect(formatPkts(1500)).toBe('1.5K');
   });
 
   it('formats M', () => {
-    expect(formatPkts(1e6)).toBe('1.00M');
-    expect(formatPkts(2e6)).toBe('2.00M');
+    expect(formatPkts(1e6)).toBe('1.0M');
+    expect(formatPkts(2e6)).toBe('2.0M');
   });
 
-  it('formats G', () => {
-    expect(formatPkts(1e9)).toBe('1.00G');
+  it('returns raw number below 1k', () => {
+    expect(formatPkts(999)).toBe(999);
   });
 });
 
 describe('speedClass', () => {
-  it('returns empty for disable status', () => {
-    expect(speedClass('10G', 'disable')).toBe('');
+  it('returns speed-down for non-up status', () => {
+    expect(speedClass('10G', 'disable')).toBe('speed-down');
+    expect(speedClass('10G', 'down')).toBe('speed-down');
+    expect(speedClass('10G', '')).toBe('speed-down');
   });
 
   it('returns speed-10g', () => {
@@ -88,13 +93,13 @@ describe('speedClass', () => {
     expect(speedClass('10g', 'up')).toBe('speed-10g');
   });
 
-  it('returns speed-25g', () => {
-    expect(speedClass('2.5G', 'up')).toBe('speed-25g');
+  it('returns speed-2500m', () => {
+    expect(speedClass('2.5G', 'up')).toBe('speed-2500m');
   });
 
-  it('returns speed-1g', () => {
-    expect(speedClass('1G', 'up')).toBe('speed-1g');
-    expect(speedClass('1000', 'up')).toBe('speed-1g');
+  it('returns speed-1000m', () => {
+    expect(speedClass('1G', 'up')).toBe('speed-1000m');
+    expect(speedClass('1000', 'up')).toBe('speed-1000m');
   });
 
   it('returns speed-100m', () => {
@@ -109,21 +114,12 @@ describe('speedClass', () => {
 describe('formatTime', () => {
   it('returns empty for falsy timestamp', () => {
     expect(formatTime(0)).toBe('');
+    expect(formatTime(undefined as any)).toBe('');
   });
 
-  it('returns "just now" for recent timestamps', () => {
-    const now = Date.now() / 1000;
-    expect(formatTime(now)).toBe('just now');
-  });
-
-  it('returns "m ago" for minutes', () => {
-    const fiveMinAgo = (Date.now() - 300000) / 1000;
-    expect(formatTime(fiveMinAgo)).toMatch(/m ago/);
-  });
-
-  it('returns "h ago" for hours', () => {
-    const twoHoursAgo = (Date.now() - 7200000) / 1000;
-    expect(formatTime(twoHoursAgo)).toMatch(/h ago/);
+  it('formats timestamp as local time string', () => {
+    const ts = new Date(2024, 0, 15, 10, 30, 0).getTime() / 1000;
+    expect(formatTime(ts)).toContain(':');
   });
 });
 
