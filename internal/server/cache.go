@@ -42,6 +42,11 @@ type SwitchData struct {
 	DHCP       SnoopingStatus    `json:"dhcp_snooping"`
 	IGMP       IGMPStatus        `json:"igmp"`
 	Jumbo      JumboFrameStatus  `json:"jumbo_frame"`
+	EEE        []EEEStatus       `json:"eee,omitempty"`
+	VLANList   []VLANItem        `json:"vlan_list,omitempty"`
+	LAG        []LAGStatus       `json:"lag,omitempty"`
+	Mirror     *MirrorStatus     `json:"mirror,omitempty"`
+	Bandwidth  []BWStatus        `json:"bandwidth,omitempty"`
 }
 
 type MACEntry struct {
@@ -174,6 +179,39 @@ type IGMPEntry struct {
 type JumboFrameStatus struct {
 	Enabled bool   `json:"enabled"`
 	Size    string `json:"size"`
+}
+
+type EEEStatus struct {
+	Port   string `json:"port"`
+	Active bool   `json:"active"`
+	Status string `json:"status"`
+	LP     string `json:"lp_status"`
+}
+
+type VLANItem struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type LAGStatus struct {
+	Number  int    `json:"number"`
+	Members string `json:"members"`
+	Hash    string `json:"hash"`
+}
+
+type MirrorStatus struct {
+	Enabled  bool   `json:"enabled"`
+	Port     string `json:"port"`
+	MirrorRX string `json:"mirror_rx"`
+	MirrorTX string `json:"mirror_tx"`
+}
+
+type BWStatus struct {
+	Port     string `json:"port"`
+	InLimit  bool   `json:"in_limited"`
+	InBW     string `json:"in_bw"`
+	OutLimit bool   `json:"out_limited"`
+	OutBW    string `json:"out_bw"`
 }
 
 func (c *Cache) GetAllIPs() []string {

@@ -285,21 +285,58 @@ func (p *Poller) poll() {
 
 	// Fetch extra data
 	eeeData, vlanList, lagData, mirrorData, bwData, mtuData := p.fetchExtraData()
-	if len(eeeData) > 0 {
-		_ = eeeData
+
+	eeeStatus := make([]server.EEEStatus, 0, len(eeeData))
+	for _, e := range eeeData {
+		eeeStatus = append(eeeStatus, server.EEEStatus{
+			Port:   itoa(int64(e.PortNum)),
+			Active: e.Active != 0,
+			Status: e.EEE,
+			LP:     e.EEELP,
+		})
 	}
-	if len(vlanList) > 0 {
-		_ = vlanList
+	swData.EEE = eeeStatus
+
+	vlanItems := make([]server.VLANItem, 0, len(vlanList))
+	for _, v := range vlanList {
+		vlanItems = append(vlanItems, server.VLANItem{
+			ID:   v.ID,
+			Name: v.Name,
+		})
 	}
-	if len(lagData) > 0 {
-		_ = lagData
+	swData.VLANList = vlanItems
+
+	lagStatus := make([]server.LAGStatus, 0, len(lagData))
+	for _, l := range lagData {
+		lagStatus = append(lagStatus, server.LAGStatus{
+			Number:  l.LAGNum,
+			Members: l.Members,
+			Hash:    l.Hash,
+		})
 	}
+	swData.LAG = lagStatus
+
 	if mirrorData != nil {
-		_ = mirrorData
+		swData.Mirror = &server.MirrorStatus{
+			Enabled:  mirrorData.Enabled != 0,
+			Port:     itoa(int64(mirrorData.MPort)),
+			MirrorRX: mirrorData.MirrorRX,
+			MirrorTX: mirrorData.MirrorTX,
+		}
 	}
-	if len(bwData) > 0 {
-		_ = bwData
+
+	bwStatus := make([]server.BWStatus, 0, len(bwData))
+	for _, b := range bwData {
+		bwStatus = append(bwStatus, server.BWStatus{
+			Port:     itoa(int64(b.PortNum)),
+			InLimit:  b.ILimited != 0,
+			InBW:     b.IBW,
+			OutLimit: b.ELimited != 0,
+			OutBW:    b.EBW,
+		})
 	}
+	swData.Bandwidth = bwStatus
+
 	if len(mtuData) > 0 {
 		for _, m := range mtuData {
 			if m.PortNum > 0 {

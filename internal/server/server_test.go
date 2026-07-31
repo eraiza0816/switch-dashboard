@@ -397,6 +397,91 @@ func TestAPIUpdateHost(t *testing.T) {
 	}
 }
 
+func TestAPISwitchesExtraFields(t *testing.T) {
+	cache := NewCache()
+	cache.UpdateSwitch("192.168.1.1", &SwitchData{
+		Name: "Test Switch", IP: "192.168.1.1", Model: "RTLPlayground",
+		MAC: "AA:BB:CC:DD:EE:FF", Hostname: "test-switch", Status: "online",
+		Ports: []PortState{
+			{Port: "1", Status: "up", Speed: "1G", TXBytes: 1000, RXBytes: 2000},
+		},
+		EEE: []EEEStatus{
+			{Port: "1", Active: true, Status: "Enabled", LP: "Supported"},
+			{Port: "2", Active: false, Status: "Disabled", LP: "Not Supported"},
+		},
+		VLANList: []VLANItem{
+			{ID: 1, Name: "Default"},
+			{ID: 100, Name: "Users"},
+		},
+		LAG: []LAGStatus{
+			{Number: 1, Members: "1,2", Hash: "src-mac"},
+		},
+		Mirror: &MirrorStatus{
+			Enabled: true, Port: "5", MirrorRX: "1,2", MirrorTX: "3,4",
+		},
+		Bandwidth: []BWStatus{
+			{Port: "1", InLimit: true, InBW: "100M", OutLimit: false, OutBW: ""},
+		},
+	})
+	srv := NewServer(cache, testConfig{}, testLogger, newLogBuf(), nil, nil)
+	srv.OUI = oui.New()
+
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/switches", nil)
+	srv.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var data []map[string]any
+	json.Unmarshal(w.Body.Bytes(), &data)
+	if len(data) != 1 {
+		t.Fatalf("expected 1 switch, got %d", len(data))
+	}
+
+	sw := data[0]
+
+	eee := sw["eee"].([]any)
+	if len(eee) != 2 {
+		t.Fatalf("expected 2 eee entries, got %d", len(eee))
+	}
+	e0 := eee[0].(map[string]any)
+	if e0["port"] != "1" || e0["active"] != true || e0["status"] != "Enabled" {
+		t.Fatalf("unexpected eee[0]: %+v", e0)
+	}
+
+	vlan := sw["vlan_list"].([]any)
+	if len(vlan) != 2 {
+		t.Fatalf("expected 2 vlan entries, got %d", len(vlan))
+	}
+	v0 := vlan[0].(map[string]any)
+	if v0["id"] != float64(1) || v0["name"] != "Default" {
+		t.Fatalf("unexpected vlan[0]: %+v", v0)
+	}
+
+	lag := sw["lag"].([]any)
+	if len(lag) != 1 {
+		t.Fatalf("expected 1 lag entry, got %d", len(lag))
+	}
+	l0 := lag[0].(map[string]any)
+	if l0["number"] != float64(1) || l0["members"] != "1,2" {
+		t.Fatalf("unexpected lag[0]: %+v", l0)
+	}
+
+	mirror := sw["mirror"].(map[string]any)
+	if mirror["enabled"] != true || mirror["port"] != "5" {
+		t.Fatalf("unexpected mirror: %+v", mirror)
+	}
+
+	bw := sw["bandwidth"].([]any)
+	if len(bw) != 1 {
+		t.Fatalf("expected 1 bandwidth entry, got %d", len(bw))
+	}
+	b0 := bw[0].(map[string]any)
+	if b0["port"] != "1" || b0["in_limited"] != true || b0["in_bw"] != "100M" {
+		t.Fatalf("unexpected bandwidth[0]: %+v", b0)
+	}
+}
+
 func TestClientHostPersistence(t *testing.T) {
 	path := t.TempDir() + "/clients.json"
 
