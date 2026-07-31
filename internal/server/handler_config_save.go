@@ -12,23 +12,23 @@ import (
 )
 
 type saveConfigData struct {
-	Title           string              `json:"title"`
-	RefreshInterval int                 `json:"refresh_interval"`
-	Switches        []saveSwitchEntry   `json:"switches"`
+	Title           string            `json:"title"`
+	RefreshInterval int               `json:"refresh_interval"`
+	Switches        []saveSwitchEntry `json:"switches"`
 }
 
 type saveSwitchEntry struct {
-	Name     string `json:"name"`
-	IP       string `json:"ip"`
-	Password string `json:"password"`
-	Model    string `json:"model"`
-	PortCount int   `json:"port_count"`
-	Enabled  bool   `json:"enabled"`
+	Name      string `json:"name"`
+	IP        string `json:"ip"`
+	Password  string `json:"password"`
+	Model     string `json:"model"`
+	PortCount int    `json:"port_count"`
+	Enabled   bool   `json:"enabled"`
 }
 
 func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 
@@ -131,9 +131,9 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 					{MAC: "AA:BB:CC:DD:EE:03", Type: "s", Port: "5", VLAN: "010"},
 				},
 				MACScraped: 0,
-				DHCP: SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
-				IGMP: IGMPStatus{Enabled: false},
-				Jumbo: JumboFrameStatus{Enabled: false, Size: "Disabled"},
+				DHCP:       SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
+				IGMP:       IGMPStatus{Enabled: false},
+				Jumbo:      JumboFrameStatus{Enabled: false, Size: "Disabled"},
 			})
 		}
 	}
@@ -197,25 +197,14 @@ func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, 
 
 	ports := make([]PortState, 0, len(status))
 	for _, entry := range status {
-		txPackets := parseHexVal(entry.TxG)
-		rxPackets := parseHexVal(entry.RxG)
+		txPackets := rtlplayground.ParseHex(entry.TxG)
+		rxPackets := rtlplayground.ParseHex(entry.RxG)
 		txBytes := txPackets * 800
 		rxBytes := rxPackets * 800
 
-		statusStr := "down"
-		linkStr := "Link Down"
-		duplex := ""
-		if entry.Link > 0 && entry.Enabled != 0 {
-			statusStr = "up"
-			linkStr = "Link Up"
-			duplex = "Full"
-		}
-		if entry.Enabled == 0 {
-			statusStr = "disable"
-			linkStr = "Disabled"
-		}
+		statusStr, linkStr, duplex := PortStatus(entry.Link, entry.Enabled)
 
-		speedStr := linkSpeedFromInt(entry.Link)
+		speedStr := rtlplayground.LinkSpeedString(entry.Link)
 		ports = append(ports, PortState{
 			Port:      fmt.Sprintf("%d", entry.PortNum),
 			Status:    statusStr,
@@ -277,42 +266,4 @@ func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, 
 	_ = bw
 
 	cache.UpdateSwitch(ip, swData)
-}
-
-func parseHexVal(s string) int64 {
-	if len(s) < 3 || s[:2] != "0x" {
-		return 0
-	}
-	var v int64
-	for _, c := range s[2:] {
-		v <<= 4
-		switch {
-		case c >= '0' && c <= '9':
-			v |= int64(c - '0')
-		case c >= 'a' && c <= 'f':
-			v |= int64(c - 'a' + 10)
-		case c >= 'A' && c <= 'F':
-			v |= int64(c - 'A' + 10)
-		default:
-			return 0
-		}
-	}
-	return v
-}
-
-func linkSpeedFromInt(link int) string {
-	switch link {
-	case 0:
-		return ""
-	case 1:
-		return "100M"
-	case 2:
-		return "1G"
-	case 3:
-		return "2.5G"
-	case 4:
-		return "10G"
-	default:
-		return "Auto"
-	}
 }

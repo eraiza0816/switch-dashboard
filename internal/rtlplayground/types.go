@@ -95,12 +95,12 @@ type EEEEntry struct {
 }
 
 type BandwidthEntry struct {
-	PortNum   int    `json:"portNum"`
-	ILimited  int    `json:"iLimited"`
-	IBW       string `json:"iBW"`
-	IFC       int    `json:"iFC"`
-	ELimited  int    `json:"eLimited"`
-	EBW       string `json:"eBW"`
+	PortNum  int    `json:"portNum"`
+	ILimited int    `json:"iLimited"`
+	IBW      string `json:"iBW"`
+	IFC      int    `json:"iFC"`
+	ELimited int    `json:"eLimited"`
+	EBW      string `json:"eBW"`
 }
 
 type MirrorConfig struct {
@@ -122,8 +122,8 @@ type MTUEntry struct {
 }
 
 type PortInfo struct {
-	PortNum   int    `json:"portNum"`
-	Name      string `json:"name,omitempty"`
+	PortNum int    `json:"portNum"`
+	Name    string `json:"name,omitempty"`
 }
 
 func itoa64(v int64) string {

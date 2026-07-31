@@ -7,23 +7,23 @@ import (
 const (
 	MaxUint32 = 4294967296
 
-	Speed10G   int64 = 10_000_000_000
-	Speed2_5G  int64 = 2_500_000_000
-	Speed2G    int64 = 2_000_000_000
-	Speed1G    int64 = 1_000_000_000
-	Speed100M  int64 = 100_000_000
-	Speed10M   int64 = 10_000_000
-	DefaultBW  int64 = 10_000_000_000
+	Speed10G  int64 = 10_000_000_000
+	Speed2_5G int64 = 2_500_000_000
+	Speed2G   int64 = 2_000_000_000
+	Speed1G   int64 = 1_000_000_000
+	Speed100M int64 = 100_000_000
+	Speed10M  int64 = 10_000_000
+	DefaultBW int64 = 10_000_000_000
 
 	BurstBuffer = 1.5
 )
 
 type CounterState struct {
-	Tx      int64   `json:"tx"`
-	Rx      int64   `json:"rx"`
-	CumTX   int64   `json:"cum_tx"`
-	CumRX   int64   `json:"cum_rx"`
-	TS      float64 `json:"ts"`
+	Tx    int64   `json:"tx"`
+	Rx    int64   `json:"rx"`
+	CumTX int64   `json:"cum_tx"`
+	CumRX int64   `json:"cum_rx"`
+	TS    float64 `json:"ts"`
 }
 
 type DeltaResult struct {
@@ -44,13 +44,13 @@ func ComputeDelta(prev *CounterState, curTX, curRX int64) DeltaResult {
 	cumTX := prev.CumTX + deltaTX
 	cumRX := prev.CumRX + deltaRX
 
-		return DeltaResult{
-			DeltaTX: deltaTX,
-			DeltaRX: deltaRX,
-			CumTX:   cumTX,
-			CumRX:   cumRX,
-		}
+	return DeltaResult{
+		DeltaTX: deltaTX,
+		DeltaRX: deltaRX,
+		CumTX:   cumTX,
+		CumRX:   cumRX,
 	}
+}
 
 func deltaValue(cur, prev int64, wasHigh bool) int64 {
 	if cur >= prev {
@@ -242,7 +242,7 @@ type PortSample struct {
 }
 
 type SpeedSample struct {
-	TS     float64
+	TS      float64
 	SpeedTX int64
 	SpeedRX int64
 }

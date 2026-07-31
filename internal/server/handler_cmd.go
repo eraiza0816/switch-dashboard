@@ -10,9 +10,8 @@ func (s *Server) handleAPISwitchCmd(w http.ResponseWriter, r *http.Request) {
 		Command string `json:"cmd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "response": "command sent (mock)"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "response": "command sent (mock)"})
 }

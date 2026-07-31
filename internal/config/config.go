@@ -28,24 +28,24 @@ type Settings struct {
 type Config struct {
 	mu sync.RWMutex
 
-	Title                 string                  `json:"title"`
-	RefreshInterval       int                     `json:"refresh_interval"`
-	MACRefreshMultiplier  int                     `json:"mac_refresh_multiplier"`
-	MaxRequestRetries     int                     `json:"max_request_retries"`
-	PortsWrapThreshold    int                     `json:"ports_wrap_threshold"`
-	GridColumns           string                  `json:"grid_columns"`
-	EnabledColumns        []string                `json:"enabled_columns"`
-	ColumnWidths          map[string]int          `json:"column_widths,omitempty"`
-	ColumnOrder           []string                `json:"column_order,omitempty"`
-	MapPositions          map[string]MapPosition  `json:"map_positions,omitempty"`
-	Switches              []SwitchConfig          `json:"switches"`
-	InfrastructureDevices []InfraDevice           `json:"infrastructure_devices,omitempty"`
-	UnmanagedSwitches     []UnmanagedSwitch       `json:"unmanaged_switches,omitempty"`
-	Clients               map[string]ClientEntry  `json:"clients,omitempty"`
-	Notes                 map[string]string       `json:"notes,omitempty"`
-	Settings              Settings                `json:"settings,omitempty"`
-	ScannerEnabled        bool                    `json:"scanner_enabled"`
-	TelemetryEnabled      bool                    `json:"telemetry_enabled"`
+	Title                 string                 `json:"title"`
+	RefreshInterval       int                    `json:"refresh_interval"`
+	MACRefreshMultiplier  int                    `json:"mac_refresh_multiplier"`
+	MaxRequestRetries     int                    `json:"max_request_retries"`
+	PortsWrapThreshold    int                    `json:"ports_wrap_threshold"`
+	GridColumns           string                 `json:"grid_columns"`
+	EnabledColumns        []string               `json:"enabled_columns"`
+	ColumnWidths          map[string]int         `json:"column_widths,omitempty"`
+	ColumnOrder           []string               `json:"column_order,omitempty"`
+	MapPositions          map[string]MapPosition `json:"map_positions,omitempty"`
+	Switches              []SwitchConfig         `json:"switches"`
+	InfrastructureDevices []InfraDevice          `json:"infrastructure_devices,omitempty"`
+	UnmanagedSwitches     []UnmanagedSwitch      `json:"unmanaged_switches,omitempty"`
+	Clients               map[string]ClientEntry `json:"clients,omitempty"`
+	Notes                 map[string]string      `json:"notes,omitempty"`
+	Settings              Settings               `json:"settings,omitempty"`
+	ScannerEnabled        bool                   `json:"scanner_enabled"`
+	TelemetryEnabled      bool                   `json:"telemetry_enabled"`
 	path                  string
 }
 
@@ -61,29 +61,29 @@ type InfraDevice struct {
 }
 
 type UnmanagedSwitch struct {
-	Name      string `json:"name"`
-	ParentIP  string `json:"parent_ip"`
+	Name       string `json:"name"`
+	ParentIP   string `json:"parent_ip"`
 	ParentPort string `json:"parent_port"`
 }
 
 type ClientEntry struct {
-	MAC            string `json:"mac,omitempty"`
-	Host           string `json:"host,omitempty"`
-	IP             string `json:"ip,omitempty"`
-	Port           string `json:"port,omitempty"`
-	VLAN           string `json:"vlan,omitempty"`
-	Status         string `json:"status,omitempty"`
-	LastSeen       int64  `json:"last_seen,omitempty"`
-	DeviceType     string `json:"device_type,omitempty"`
-	ScannerIP      string `json:"scanner_ip,omitempty"`
-	Vendor         string `json:"vendor,omitempty"`
-	ScannerStatus  string `json:"scanner_status,omitempty"`
-	ScannerDetected bool `json:"scanner_detected,omitempty"`
-	KnownHost      int    `json:"known_host,omitempty"`
-	Note           string `json:"note,omitempty"`
-	FirstSeen      string `json:"first_seen,omitempty"`
-	LastSeenOnline string `json:"last_seen_online,omitempty"`
-	LastUpdated    string `json:"last_updated,omitempty"`
+	MAC             string `json:"mac,omitempty"`
+	Host            string `json:"host,omitempty"`
+	IP              string `json:"ip,omitempty"`
+	Port            string `json:"port,omitempty"`
+	VLAN            string `json:"vlan,omitempty"`
+	Status          string `json:"status,omitempty"`
+	LastSeen        int64  `json:"last_seen,omitempty"`
+	DeviceType      string `json:"device_type,omitempty"`
+	ScannerIP       string `json:"scanner_ip,omitempty"`
+	Vendor          string `json:"vendor,omitempty"`
+	ScannerStatus   string `json:"scanner_status,omitempty"`
+	ScannerDetected bool   `json:"scanner_detected,omitempty"`
+	KnownHost       int    `json:"known_host,omitempty"`
+	Note            string `json:"note,omitempty"`
+	FirstSeen       string `json:"first_seen,omitempty"`
+	LastSeenOnline  string `json:"last_seen_online,omitempty"`
+	LastUpdated     string `json:"last_updated,omitempty"`
 }
 
 func Load(path string) (*Config, error) {

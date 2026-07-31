@@ -154,14 +154,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	if !s.DuckDBReady {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"status": "not ready", "reason": "duckdb not ready"})
+		s.writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not ready", "reason": "duckdb not ready"})
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
 func loadTemplatesWithFS(tmplFS fs.FS) *template.Template {

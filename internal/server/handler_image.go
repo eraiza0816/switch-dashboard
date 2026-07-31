@@ -45,5 +45,5 @@ func (s *Server) handleAPISwitchImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, "image not found", http.StatusNotFound)
+	s.writeError(w, http.StatusNotFound, "image not found")
 }

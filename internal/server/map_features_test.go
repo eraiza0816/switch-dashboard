@@ -92,7 +92,7 @@ func TestAPIDeviceTypesRawSave(t *testing.T) {
 func TestAPIUpdateType(t *testing.T) {
 	s := newMapTestServer(t, mapTestConfig{}, &SwitchData{
 		Name: "Core", IP: "192.168.1.1", Model: "RTLPlayground", MAC: "AA:BB:CC:DD:EE:FF",
-		Status: "online",
+		Status:   "online",
 		MACTable: []MACEntry{{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "1"}},
 	})
 	body := `{"mac":"AA:BB:CC:DD:EE:01","type":"nas"}`
