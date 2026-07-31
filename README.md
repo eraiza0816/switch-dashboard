@@ -1,6 +1,6 @@
-# Switch Dashboard
+# RTLP Dashboard
 
-**RTLPlayground** ファームウェア（RTL8372/RTL8373 ベースの 2.5GbE スイッチ）を搭載したスイッチのためのリアルタイム監視ダッシュボード。Go + TypeScript 製、シングルバイナリで動作します。
+**RTLPlayground** ファームウェア（RTL8372/RTL8373 ベースの 2.5GbE スイッチ）を搭載したスイッチのためのリアルタイム監視ダッシュボード
 
 ![Dashboard](images/dashboard.png)
 
@@ -22,7 +22,7 @@
 
 ## 対応ハードウェア
 
-RTLPlayground ファームウェアは Ampcom、Davuaz、FOXNEO、Hisource、Horaco、KeepLink、LIANGUO、Mokerlink、Sodola、Steamemo、TrendNet、XikeStor など 20 以上のデバイスモデルで動作します。詳細は [RTLPlayground supported devices](https://github.com/logicog/RTLPlayground/blob/main/doc/supported_devices.md) をご覧ください。
+詳細は [RTLPlayground supported devices](https://github.com/logicog/RTLPlayground/blob/main/doc/supported_devices.md) をご覧ください。
 
 ## クイックスタート
 
@@ -61,7 +61,7 @@ http://localhost:8081 を開く
 ### データディレクトリの変更
 
 ```bash
-# カレントディレクトリに保存（従来互換）
+# カレントディレクトリに保存
 ./switch-dashboard -d .
 
 # 明示的なパスを指定
@@ -75,7 +75,7 @@ http://localhost:8081 を開く
 ```
 ~/.local/share/switch-dashboard/
 ├── config.json              # スイッチ設定（--config / -c で変更可）
-├── history.duckdb           # DuckDB 時系列データベース（1年保持）
+├── history.duckdb           # DuckDB 時系列データベース
 ├── clients.json             # クライアントホスト名の上書き設定
 └── layout_positions.json    # トポロジーマップのノード位置
 ```
@@ -140,31 +140,31 @@ RTLPlayground Switch (uIP embedded webserver)
 ## プロジェクト構成
 
 ```
-├── cmd/switch-dashboard/          # エントリーポイント
-├── e2e/                           # Playwright E2E テスト（51 tests）
-│   ├── tests/                     #   テストファイル
-│   ├── playwright.config.ts       #   Playwright 設定
-│   └── package.json               #   依存分離（@playwright/test のみ）
+├── cmd/switch-dashboard/   
+├── e2e/                    
+│   ├── tests/              
+│   ├── playwright.config.ts
+│   └── package.json        
 ├── frontend/
-│   ├── src/                       # TypeScript ソース（dashboard, logs, backups, map）
-│   └── package.json               # bun ビルド設定
+│   ├── src/                
+│   └── package.json        
 ├── internal/
-│   ├── server/                    # HTTP ハンドラー、キャッシュ、テンプレート、OpenAPI 仕様
-│   ├── rtlplayground/             # スイッチ HTTP クライアント + JSON 型
-│   ├── poller/                    # バックグラウンドポーリング、カウンター、履歴取込
-│   ├── config/                    # config.json 管理
-│   ├── history/                   # DuckDB による帯域履歴保存
-│   ├── oui/                       # MAC ベンダー自動解決（IEEE OUI ダウンロード）
-│   └── store/                     # 汎用 JSON 永続化インターフェース
-├── templates/                     # Go html/templates（6 ページ）
+│   ├── server/             
+│   ├── rtlplayground/      
+│   ├── poller/             
+│   ├── config/             
+│   ├── history/            
+│   ├── oui/                
+│   └── store/              
+├── templates/              
 ├── static/
-│   ├── style.css                  # ダークガラスモーフィックテーマ
-│   ├── dist/                      # コンパイル済みフロントエンド
+│   ├── style.css           
+│   ├── dist/               
 │   └── logo.png
-├── images/                        # スクリーンショット（Playwright 自動生成）
-├── Dockerfile                     # マルチステージビルド（bun → Go）
-├── Dockerfile.e2e                 # E2E テスト用 Docker（1.5GB, chromium のみ）
-└── LICENSE                        # MIT
+├── images/                 
+├── Dockerfile              
+├── Dockerfile.e2e          
+└── LICENSE
 ```
 
 ## テスト
@@ -182,7 +182,3 @@ docker build -f Dockerfile.e2e -t switch-dashboard-e2e . && docker run --rm swit
 # スクリーンショット更新
 cd e2e && OUT_DIR=../images npx playwright test tests/screenshots.spec.ts
 ```
-
-## ライセンス
-
-MIT
