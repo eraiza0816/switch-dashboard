@@ -67,4 +67,33 @@ test.describe('Dashboard', () => {
     await page.goto('/');
     await expect(page.locator('.last-update')).toContainText('Last update:');
   });
+
+  test.describe('Extra status sections', () => {
+    const sections: { key: string; label: string }[] = [
+      { key: 'eee', label: 'EEE' },
+      { key: 'vlan', label: 'VLAN' },
+      { key: 'lag', label: 'LAG' },
+      { key: 'mirror', label: 'Mirroring' },
+      { key: 'bandwidth', label: 'Bandwidth' },
+    ];
+
+    for (const { key, label } of sections) {
+      test(`${key} section header is visible`, async ({ page }) => {
+        await page.goto('/');
+        const section = page.locator(`.${key}-section`).first();
+        await expect(section).toBeVisible();
+        await expect(section.locator('h4')).toContainText(label);
+      });
+
+      test(`${key} section is expandable on click`, async ({ page }) => {
+        await page.goto('/');
+        const section = page.locator(`.${key}-section`).first();
+        const header = section.locator('h4');
+        await header.click();
+        const content = section.locator('div[class*="-content-"]');
+        await expect(content).toBeAttached();
+        await expect(content).toBeVisible();
+      });
+    }
+  });
 });
