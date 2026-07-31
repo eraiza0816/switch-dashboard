@@ -1,35 +1,42 @@
-# Python byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Runtime data
+counters.json
+notes.json
+history_hourly.json
+history_daily.json
+*.duckdb
+history.duckdb.wal
+clients.json
+layout_positions.json
+config.json
 
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
+# Directories
+backup/
+logs/
+node_modules/
+frontend/node_modules/
 
-# OS generated files
+# Build artifacts
+static/dist/
+/switch-dashboard
+
+# E2E test artifacts
+e2e/results.json
+e2e/test-results/
+e2e/playwright-report/
+e2e/node_modules/
+frontend/test-results/
+
+# Bun
+frontend/bun.lock
+
+# Local data directory (when using -d .)
+data/
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# Project-specific state and temporary files
-counters.json
-notes.json
-settings.json
-history_hourly.json
-history_daily.json
-backup_test_temp/
-
-# Switch configuration backups
-backup/
-
-# Logs and log directories
-logs/
+# Misc
 *.log
-
-# Databases, state, and credentials configs
 network_scanner.db
-last_post_scan.ts
-config.json
+*.exe
