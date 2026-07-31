@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/eraiza0816/switch-dashboard/internal/config"
 	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
 )
@@ -46,6 +47,12 @@ func (t testConfig) PortsWrapThreshold() int      { return 0 }
 func (t testConfig) ColumnWidths() map[string]int { return nil }
 func (t testConfig) ColumnOrder() []string        { return nil }
 func (t testConfig) Version() string              { return "test" }
+func (t testConfig) Switches() []config.SwitchConfig {
+	return nil
+}
+func (t testConfig) InfrastructureDevices() []config.InfraDevice { return nil }
+func (t testConfig) UnmanagedSwitches() []config.UnmanagedSwitch { return nil }
+func (t testConfig) IgnoredMACs() []string                       { return nil }
 
 func newTestServer() *Server {
 	cache := NewCache()
@@ -493,7 +500,7 @@ func TestClientHostPersistence(t *testing.T) {
 	})
 	s1 := NewServer(cache1, testConfig{}, testLogger, newLogBuf(), nil, nil)
 	s1.OUI = oui.New()
-	s1.ClientHostsPath = path
+	s1.ClientsPath = path
 	body := `{"mac":"AA:BB:CC:DD:EE:01","host":"MyDevice"}`
 	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/clients/update_host", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
@@ -511,8 +518,8 @@ func TestClientHostPersistence(t *testing.T) {
 	})
 	s2 := NewServer(cache2, testConfig{}, testLogger, newLogBuf(), nil, nil)
 	s2.OUI = oui.New()
-	s2.ClientHostsPath = path
-	s2.loadClientHosts()
+	s2.ClientsPath = path
+	s2.loadClients()
 
 	w2, r2 := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/topology", nil)
 	s2.Router.ServeHTTP(w2, r2)

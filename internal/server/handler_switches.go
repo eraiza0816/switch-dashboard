@@ -14,11 +14,17 @@ func (s *Server) handleAPISwitches(w http.ResponseWriter, r *http.Request) {
 		data = []*SwitchData{}
 	}
 	for _, sw := range data {
-		for i := range sw.MACTable {
-			if sw.MACTable[i].Vendor == "" {
-				sw.MACTable[i].Vendor = s.OUI.Lookup(sw.MACTable[i].MAC)
+		filtered := sw.MACTable[:0]
+		for _, entry := range sw.MACTable {
+			if s.isIgnoredMAC(entry.MAC) {
+				continue
 			}
+			if entry.Vendor == "" {
+				entry.Vendor = s.OUI.Lookup(entry.MAC)
+			}
+			filtered = append(filtered, entry)
 		}
+		sw.MACTable = filtered
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)

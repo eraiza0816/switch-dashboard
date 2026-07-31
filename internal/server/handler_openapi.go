@@ -268,6 +268,104 @@ func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 					},
 				},
 			},
+			"/api/clients/update_type": map[string]any{
+				"post": map[string]any{
+					"summary": "Set client device type",
+					"description": "Assigns a device type (laptop, nas, ipcam, ...) to a client for icon rendering in the topology map.",
+					"requestBody": map[string]any{
+						"content": map[string]any{
+							"application/json": map[string]any{
+								"schema": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"mac":  map[string]any{"type": "string"},
+										"type": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Device type saved"},
+					},
+				},
+			},
+			"/api/clients/delete": map[string]any{
+				"post": map[string]any{
+					"summary": "Forget/remove a client device",
+					"requestBody": map[string]any{
+						"content": map[string]any{
+							"application/json": map[string]any{
+								"schema": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"mac": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Client removed"},
+					},
+				},
+			},
+			"/api/clients/import_csv": map[string]any{
+				"post": map[string]any{
+					"summary": "Import client hostnames from CSV",
+					"description": "Accepts a multipart file upload. CSV columns: hostname,mac",
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Import result"},
+					},
+				},
+			},
+			"/api/device_types": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get device type definitions",
+					"description": "Returns the device type map (label/icon) used for topology icon rendering.",
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Device type map"},
+					},
+				},
+			},
+			"/api/device_types/raw": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get raw device types YAML",
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Raw YAML content"},
+					},
+				},
+				"post": map[string]any{
+					"summary": "Save device types YAML",
+					"requestBody": map[string]any{
+						"content": map[string]any{
+							"application/json": map[string]any{
+								"schema": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"content": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Device types saved"},
+					},
+				},
+			},
+			"/api/switches/{ip}/image": map[string]any{
+				"get": map[string]any{
+					"summary":     "Switch model image",
+					"description": "Serves a model-specific device image (PNG/JPG) or the bundled logo as fallback.",
+					"parameters": []map[string]any{
+						{"name": "ip", "in": "path", "required": true, "schema": map[string]any{"type": "string"}},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "Image file"},
+					},
+				},
+			},
 			"/api/layout_positions": map[string]any{
 				"get": map[string]any{
 					"summary":     "Get topology node layout positions",

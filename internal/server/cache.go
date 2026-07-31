@@ -59,13 +59,21 @@ type MACEntry struct {
 }
 
 type TopologyNode struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	IP     string `json:"ip,omitempty"`
-	MAC    string `json:"mac,omitempty"`
-	Model  string `json:"model,omitempty"`
-	Status string `json:"status"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Type         string  `json:"type"`
+	IP           string  `json:"ip,omitempty"`
+	MAC          string  `json:"mac,omitempty"`
+	Model        string  `json:"model,omitempty"`
+	Status       string  `json:"status"`
+	Vendor       string  `json:"vendor,omitempty"`
+	Host         string  `json:"host,omitempty"`
+	DeviceType   string  `json:"device_type,omitempty"`
+	LastSeenIP   string  `json:"last_seen_ip,omitempty"`
+	LastSeenPort string  `json:"last_seen_port,omitempty"`
+	LastSeenTime float64 `json:"last_seen_time,omitempty"`
+	ParentIP     string  `json:"parent_ip,omitempty"`
+	ParentPort   string  `json:"parent_port,omitempty"`
 }
 
 type TopologyLink struct {

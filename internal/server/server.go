@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eraiza0816/switch-dashboard/internal/config"
 	"github.com/eraiza0816/switch-dashboard/internal/history"
 	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
@@ -30,9 +31,9 @@ type Server struct {
 	LogBuffer           *logbuf.LogBuffer
 	tmpl                *template.Template
 	staticFS            fs.FS
-	ClientHosts         map[string]string
-	ClientHostsPath     string
-	clientHostsMu       sync.RWMutex
+	Clients             map[string]config.ClientEntry
+	ClientsPath         string
+	clientsMu           sync.RWMutex
 	LayoutPositions     map[string]map[string]float64
 	LayoutPositionsPath string
 	layoutPositionsMu   sync.RWMutex
@@ -40,47 +41,10 @@ type Server struct {
 	OUI                 *oui.DB
 	DataDir             string
 	ConfigPath          string
+	DeviceTypesPath     string
+	DeviceTemplatesDir  string
 	DuckDBReady         bool
 	ConfigReload        func() error
-}
-
-func (s *Server) ClientHost(mac string) string {
-	s.clientHostsMu.RLock()
-	defer s.clientHostsMu.RUnlock()
-	if s.ClientHosts == nil {
-		return ""
-	}
-	return s.ClientHosts[mac]
-}
-
-func (s *Server) loadClientHosts() {
-	if s.ClientHostsPath == "" {
-		return
-	}
-	data, err := os.ReadFile(s.ClientHostsPath)
-	if err != nil {
-		return
-	}
-	var hosts map[string]string
-	if err := json.Unmarshal(data, &hosts); err != nil {
-		return
-	}
-	s.clientHostsMu.Lock()
-	s.ClientHosts = hosts
-	s.clientHostsMu.Unlock()
-}
-
-func (s *Server) saveClientHosts() {
-	if s.ClientHostsPath == "" {
-		return
-	}
-	s.clientHostsMu.RLock()
-	data, err := json.MarshalIndent(s.ClientHosts, "", "  ")
-	s.clientHostsMu.RUnlock()
-	if err != nil {
-		return
-	}
-	os.WriteFile(s.ClientHostsPath, data, 0644)
 }
 
 func (s *Server) loadLayoutPositions() {
@@ -122,27 +86,11 @@ type ConfigProvider interface {
 	ColumnWidths() map[string]int
 	ColumnOrder() []string
 	Version() string
+	Switches() []config.SwitchConfig
+	InfrastructureDevices() []config.InfraDevice
+	UnmanagedSwitches() []config.UnmanagedSwitch
+	IgnoredMACs() []string
 }
-
-type simpleConfig struct {
-	title              string
-	refresh            int
-	enabledColumns     []string
-	gridColumns        string
-	portsWrapThreshold int
-	columnWidths       map[string]int
-	columnOrder        []string
-	version            string
-}
-
-func (s *simpleConfig) Title() string                    { return s.title }
-func (s *simpleConfig) RefreshInterval() int             { return s.refresh }
-func (s *simpleConfig) EnabledColumns() []string         { return s.enabledColumns }
-func (s *simpleConfig) GridColumns() string              { return s.gridColumns }
-func (s *simpleConfig) PortsWrapThreshold() int          { return s.portsWrapThreshold }
-func (s *simpleConfig) ColumnWidths() map[string]int     { return s.columnWidths }
-func (s *simpleConfig) ColumnOrder() []string            { return s.columnOrder }
-func (s *simpleConfig) Version() string                  { return s.version }
 
 func NewServer(cache *Cache, cfg ConfigProvider, logger *slog.Logger, logBuf *logbuf.LogBuffer, tmplFS fs.FS, staticFS fs.FS) *Server {
 	s := &Server{
@@ -152,7 +100,7 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger *slog.Logger, logBuf *lo
 		Logger:          logger,
 		LogBuffer:       logBuf,
 		staticFS:        staticFS,
-		ClientHosts:     make(map[string]string),
+		Clients:         make(map[string]config.ClientEntry),
 		LayoutPositions: make(map[string]map[string]float64),
 	}
 
@@ -172,7 +120,7 @@ func NewServer(cache *Cache, cfg ConfigProvider, logger *slog.Logger, logBuf *lo
 
 	s.tmpl = loadTemplatesWithFS(tmplFS)
 	s.registerRoutes()
-	s.loadClientHosts()
+	s.loadClients()
 	s.loadLayoutPositions()
 	return s
 }
@@ -251,6 +199,7 @@ func (s *Server) registerRoutes() {
 		r.Get("/switches", s.handleAPISwitches)
 		r.Get("/switches/{ip}/sfp", s.handleAPISwitchSFP)
 		r.Get("/switches/{ip}/transceiver", s.handleAPISwitchSFP)
+		r.Get("/switches/{ip}/image", s.handleAPISwitchImage)
 		r.Post("/switches/{ip}/refresh_mac", s.handleAPIRefreshMAC)
 		r.Post("/switches/{ip}/backup", s.handleAPIBackup)
 		r.Post("/switches/{ip}/reboot", s.handleAPIReboot)
@@ -277,7 +226,15 @@ func (s *Server) registerRoutes() {
 		r.Get("/vendors", s.handleAPIGetVendors)
 		r.Post("/vendors", s.handleAPISaveVendors)
 		r.Post("/vendors/update_oui", s.handleAPIUpdateOUI)
+
+		r.Get("/device_types", s.handleAPIGetDeviceTypes)
+		r.Get("/device_types/raw", s.handleAPIDeviceTypesRaw)
+		r.Post("/device_types/raw", s.handleAPIDeviceTypesRaw)
+
 		r.Post("/clients/update_host", s.handleAPIUpdateHost)
+		r.Post("/clients/update_type", s.handleAPIUpdateType)
+		r.Post("/clients/delete", s.handleAPIClientDelete)
+		r.Post("/clients/import_csv", s.handleAPIClientImportCSV)
 		r.Get("/layout_positions", s.handleAPIGetLayoutPositions)
 		r.Post("/layout_positions", s.handleAPISaveLayoutPositions)
 

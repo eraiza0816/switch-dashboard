@@ -5,7 +5,7 @@ test.describe('Network Map', () => {
     await page.goto('/map');
     await expect(page.locator('h1')).toContainText('Network Map');
     await expect(page.locator('#map-canvas')).toBeVisible();
-    await expect(page.locator('#map-canvas svg')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#map-svg')).toBeVisible({ timeout: 10000 });
     const nodes = page.locator('.node-group');
     await expect(nodes).toHaveCount(4);
   });
@@ -13,7 +13,7 @@ test.describe('Network Map', () => {
   test('shows switch and client nodes', async ({ page }) => {
     await page.goto('/map');
     const switchNode = page.locator('.node-group').first();
-    await expect(switchNode).toContainText('S');
+    await expect(switchNode).toContainText('Test Switch');
     const nodeTexts = await page.locator('.node-group text').allTextContents();
     const hasSwitchName = nodeTexts.some(t => t.includes('Test Switch'));
     expect(hasSwitchName).toBeTruthy();
@@ -28,11 +28,23 @@ test.describe('Network Map', () => {
     await expect(page.locator('#sidebar h3')).toContainText('Test Switch');
   });
 
-  test('clicking a client node opens sidebar', async ({ page }) => {
+  test('clicking a client node opens sidebar with device actions', async ({ page }) => {
     await page.goto('/map');
     const clientNode = page.locator('.node-group').nth(1);
     await clientNode.dispatchEvent('mousedown', { button: 0 });
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#inspect-type-select')).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Forget Device' })).toBeVisible();
+  });
+
+  test('live countdown is present and counts down', async ({ page }) => {
+    await page.goto('/map');
+    await expect(page.locator('#map-countdown')).toBeVisible();
+  });
+
+  test('CSV import link is present', async ({ page }) => {
+    await page.goto('/map');
+    await expect(page.locator('a[href*="importClientsCSV"]')).toBeVisible();
   });
 
   test('drag-and-drop moves a node', async ({ page }) => {
