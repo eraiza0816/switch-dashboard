@@ -12,6 +12,7 @@ import (
 	"github.com/eraiza0816/switch-dashboard/internal/config"
 	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
 )
 
 var testLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -227,15 +228,6 @@ func TestAPIBackup(t *testing.T) {
 	}
 }
 
-func TestAPIReboot(t *testing.T) {
-	s := newTestServer()
-	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/reboot", nil)
-	s.Router.ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-}
-
 func TestAPILogs(t *testing.T) {
 	s := newTestServer()
 	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/logs", nil)
@@ -341,8 +333,21 @@ func TestConfigSave(t *testing.T) {
 	}
 }
 
+// TestSFPHandler verifies the transceiver endpoint serves the data the
+// poller scraped from the switch, not hardcoded values.
 func TestSFPHandler(t *testing.T) {
 	s := newTestServer()
+	s.Cache.UpdateSwitch("192.168.1.1", &SwitchData{
+		Name:   "Test Switch",
+		IP:     "192.168.1.1",
+		Status: "online",
+		Ports: []PortState{
+			{Port: "9", Status: "up", Speed: "10G", IsSFP: true, SFPVendor: "OEM", SFPModel: "10G-SFP+", SFPSerial: "12345678", SFPLos: false},
+		},
+		SFPDiag: []SFPDiagStatus{
+			{Port: 9, Options: "0x68", Temp: "42.4 C", VCC: "3.25 V", Bias: "6.88 mA", TXPower: "-2.69 dBm", HasDDMI: true},
+		},
+	})
 	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/switches/192.168.1.1/transceiver", nil)
 	s.Router.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
@@ -350,24 +355,126 @@ func TestSFPHandler(t *testing.T) {
 	}
 	var data map[string]any
 	json.Unmarshal(w.Body.Bytes(), &data)
-	if data["vendor_name"] == nil {
-		t.Fatal("expected vendor_name in transceiver response")
+	if data["vendor_name"] != "OEM" || data["vendor_pn"] != "10G-SFP+" || data["vendor_sn"] != "12345678" {
+		t.Fatalf("unexpected vendor fields: %v", data)
+	}
+	if data["temperature"] != "42.4 C" || data["voltage"] != "3.25 V" || data["tx_power"] != "-2.69 dBm" {
+		t.Fatalf("unexpected telemetry: %v", data)
+	}
+	if data["ddmi_enabled"] != "1" || data["loss_of_signal"] != "0" {
+		t.Fatalf("unexpected flags: %v", data)
 	}
 }
 
-func TestCmdEndpoint(t *testing.T) {
-	s := newTestServer()
-	body := strings.NewReader(`{"cmd":"show"}`)
-	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/cmd", body)
-	r.Header.Set("Content-Type", "application/json")
+func TestSFPHandlerNoModule(t *testing.T) {
+	s := newTestServer() // no SFP ports in cache
+	w, r := httptest.NewRecorder(), httptest.NewRequest("GET", "/api/switches/192.168.1.1/transceiver", nil)
 	s.Router.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 	var data map[string]any
 	json.Unmarshal(w.Body.Bytes(), &data)
-	if data["status"] != "ok" {
-		t.Fatalf("expected status ok, got %v", data["status"])
+	if data["error"] == nil {
+		t.Fatal("expected error for missing SFP module")
+	}
+}
+
+// fakeSwitchServer implements just enough of the RTLPlayground API for the
+// command/reboot handlers and records every /cmd body.
+func fakeSwitchServer(t *testing.T, commands *[]string) *httptest.Server {
+	t.Helper()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/login":
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess"})
+			w.Header().Set("Location", "index.html")
+			w.WriteHeader(http.StatusFound)
+		case "/cmd":
+			body, _ := io.ReadAll(r.Body)
+			*commands = append(*commands, string(body))
+			w.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	return ts
+}
+
+func cmdFactory(ts *httptest.Server) func(string) (*rtlplayground.Client, error) {
+	return func(ip string) (*rtlplayground.Client, error) {
+		return rtlplayground.NewWithClient(ts.Listener.Addr().String(), ts.Client()), nil
+	}
+}
+
+func TestCmdEndpoint(t *testing.T) {
+	var commands []string
+	ts := fakeSwitchServer(t, &commands)
+	defer ts.Close()
+
+	s := newTestServer()
+	s.SwitchClientFactory = cmdFactory(ts)
+
+	body := strings.NewReader(`{"cmd":"hostname test"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/cmd", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if len(commands) != 1 || commands[0] != "hostname test" {
+		t.Fatalf("commands sent = %v, want [hostname test]", commands)
+	}
+}
+
+func TestCmdEndpointNotConfigured(t *testing.T) {
+	s := newTestServer() // no factory, config has no switches
+	body := strings.NewReader(`{"cmd":"show"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/cmd", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unconfigured switch, got %d", w.Code)
+	}
+}
+
+func TestCmdEndpointValidationFailure(t *testing.T) {
+	var commands []string
+	ts := fakeSwitchServer(t, &commands)
+	defer ts.Close()
+
+	s := newTestServer()
+	s.SwitchClientFactory = cmdFactory(ts)
+
+	body := strings.NewReader(`{"cmd":"hostname bad..name"}`)
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/cmd", body)
+	r.Header.Set("Content-Type", "application/json")
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 for invalid command, got %d", w.Code)
+	}
+	if len(commands) != 0 {
+		t.Fatalf("invalid command must not be sent, got %v", commands)
+	}
+}
+
+// The reboot endpoint must send the firmware "reset" CLI command (the
+// firmware has no /reset HTTP endpoint).
+func TestAPIReboot(t *testing.T) {
+	var commands []string
+	ts := fakeSwitchServer(t, &commands)
+	defer ts.Close()
+
+	s := newTestServer()
+	s.SwitchClientFactory = cmdFactory(ts)
+
+	w, r := httptest.NewRecorder(), httptest.NewRequest("POST", "/api/switches/192.168.1.1/reboot", nil)
+	s.Router.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if len(commands) != 1 || commands[0] != "reset" {
+		t.Fatalf("commands sent = %v, want [reset]", commands)
 	}
 }
 

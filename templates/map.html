@@ -29,7 +29,10 @@
 </head>
 <body>
 <div class="header">
-  <h1>{{ .Title }} - <span data-i18n="map.title">Network Map</span></h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <img src="/static/logo.png" alt="logo" style="height:38px;width:38px;border-radius:8px;object-fit:cover;border:1px solid #30363d;">
+    <h1>{{ .Title }} - <span data-i18n="map.title">Network Map</span></h1>
+  </div>
   <div class="nav-links">
     <span class="status"><span class="dot" id="map-live-dot"></span><span id="map-live-text" data-i18n="map.live">Live</span></span>
     <span class="countdown" id="map-countdown"></span>
@@ -38,6 +41,7 @@
     <a href="/config" data-i18n="nav.config">Config</a>
     <a href="/backups" data-i18n="nav.backups">Backups</a>
     <a href="/logs" data-i18n="nav.logs">Logs</a>
+    <a href="/api-docs" data-i18n="nav.api">API</a>
     <a href="javascript:toggleClients()" style="font-size:11px;" data-i18n="map.toggle_clients">Toggle Clients</a>
     <a href="javascript:importClientsCSV()" style="font-size:11px;" data-i18n="map.import_csv">Import CSV</a>
     <a href="javascript:resetLayout()" style="font-size:11px;color:#d29922;" data-i18n="map.reset_layout">Reset Layout</a>

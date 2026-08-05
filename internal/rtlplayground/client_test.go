@@ -1,10 +1,15 @@
 package rtlplayground
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -278,6 +283,269 @@ func TestLoginFailure(t *testing.T) {
 	}
 }
 
+// The firmware answers every login with a 302: valid password redirects to
+// index.html with a session cookie, invalid to login.html without one.  A
+// wrong password must be detected even though the HTTP status is the same.
+func TestLoginWrongPasswordDetected(t *testing.T) {
+	loginHits := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHits++
+		if r.FormValue("pwd") == "correct" {
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "abc123"})
+			w.Header().Set("Location", "index.html")
+		} else {
+			w.Header().Set("Location", "login.html")
+		}
+		w.WriteHeader(http.StatusFound)
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	if _, err := New(ts.Listener.Addr().String(), "wrong"); err == nil {
+		t.Fatal("expected login failure for wrong password")
+	}
+
+	// A 302 without a session cookie is also a failure (e.g. stale backend).
+	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "index.html")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer ts2.Close()
+	if _, err := New(ts2.Listener.Addr().String(), "correct"); err == nil {
+		t.Fatal("expected login failure without session cookie")
+	}
+
+	c, err := New(ts.Listener.Addr().String(), "correct")
+	if err != nil {
+		t.Fatalf("login with correct password: %v", err)
+	}
+	if c.password != "correct" {
+		t.Fatalf("password not stored: %q", c.password)
+	}
+	if loginHits != 2 {
+		t.Fatalf("login hits = %d, want 2 (wrong + correct)", loginHits)
+	}
+}
+
+// The firmware session expires after 200s (SESSION_TIMEOUT in httpd.c) and
+// JSON API requests never refresh it, so a 401 must trigger a re-login and a
+// retry of the request.
+func TestSessionExpiryReLogin(t *testing.T) {
+	loginHits := 0
+	statusHits := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHits++
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess"})
+		w.Header().Set("Location", "index.html")
+		w.WriteHeader(http.StatusFound)
+	})
+	mux.HandleFunc("/status.json", func(w http.ResponseWriter, r *http.Request) {
+		statusHits++
+		if statusHits == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[{"portNum":1,"link":5,"enabled":1}]`))
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c, err := New(ts.Listener.Addr().String(), "pw")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if _, err := c.ScrapeStatus(); err != nil {
+		t.Fatalf("ScrapeStatus after re-login: %v", err)
+	}
+	if loginHits != 2 {
+		t.Fatalf("login hits = %d, want 2 (initial + re-login)", loginHits)
+	}
+	if statusHits != 2 {
+		t.Fatalf("status hits = %d, want 2 (401 + retry)", statusHits)
+	}
+}
+
+// POST /cmd must also survive a session expiry (the body is regenerated).
+func TestCommandReLogin(t *testing.T) {
+	loginHits := 0
+	cmdHits := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHits++
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess"})
+		w.Header().Set("Location", "index.html")
+		w.WriteHeader(http.StatusFound)
+	})
+	mux.HandleFunc("/cmd", func(w http.ResponseWriter, r *http.Request) {
+		cmdHits++
+		if cmdHits == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c, err := New(ts.Listener.Addr().String(), "pw")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if err := c.ExecuteCommand("hostname test"); err != nil {
+		t.Fatalf("ExecuteCommand after re-login: %v", err)
+	}
+	if loginHits != 2 {
+		t.Fatalf("login hits = %d, want 2", loginHits)
+	}
+	if cmdHits != 2 {
+		t.Fatalf("cmd hits = %d, want 2 (401 + retry)", cmdHits)
+	}
+}
+
+// Reboot is executed as the "reset" CLI command, since the firmware has no
+// /reset HTTP endpoint.
+func TestRebootSendsResetCommand(t *testing.T) {
+	var mu sync.Mutex
+	var cmds []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/cmd", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		cmds = append(cmds, string(body))
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), ts.Client())
+	if err := c.Reboot(); err != nil {
+		t.Fatalf("Reboot: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(cmds) != 1 || cmds[0] != "reset" {
+		t.Fatalf("commands = %v, want [reset]", cmds)
+	}
+}
+
+// The firmware parses the raw POST /cmd body as the command text (see
+// httpd.c execute_commands), so it must not be form-encoded.
+func TestExecuteCommandRawBody(t *testing.T) {
+	var mu sync.Mutex
+	var bodies []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/cmd", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, string(body))
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), ts.Client())
+	if err := c.ExecuteCommand("port 3 name uplink"); err != nil {
+		t.Fatalf("ExecuteCommand: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(bodies) != 1 || bodies[0] != "port 3 name uplink" {
+		t.Fatalf("body = %q, want raw command text", bodies[0])
+	}
+}
+
+func TestScrapeCounters(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/counters.json", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("port") != "3" {
+			t.Errorf("port query = %q, want 3", r.URL.Query().Get("port"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`["0x0000000000001000","0x0000000000002000","0x0000000000003000"]`))
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), ts.Client())
+	counters, err := c.ScrapeCounters(3)
+	if err != nil {
+		t.Fatalf("ScrapeCounters: %v", err)
+	}
+	if len(counters) != 3 {
+		t.Fatalf("expected 3 counters, got %d", len(counters))
+	}
+	if ParseHex(counters[0]) != 0x1000 || ParseHex(counters[1]) != 0x2000 {
+		t.Fatalf("unexpected counters: %v", counters)
+	}
+}
+
+// FormatSFPDiag converts raw sfp_diag.json hex into display units using the
+// same scaling as the firmware WebUI (main.js pollSfpDiag).
+func TestFormatSFPDiag(t *testing.T) {
+	v := FormatSFPDiag(SFPDiagEntry{
+		PortNum:    6,
+		SFPOptions: "0x68",
+		SFPTemp:    "0x2a67", // 10855 / 256 = 42.4 C
+		SFPVCC:     "0x7f01", // 32513 * 0.0001 = 3.25 V
+		SFPTXBias:  "0x0d72", // 3442 * 0.002 = 6.88 mA
+		SFPTXPower: "0x150c", // 5388 * 0.0001 mW = -2.69 dBm
+		SFPRXPower: "0x0000",
+		SFPState:   "0x00",
+	})
+	if v.Port != 6 || !v.HasDDMI {
+		t.Fatalf("port/ddmi: %+v", v)
+	}
+	if v.Temp != "42.4 C" {
+		t.Errorf("temp = %q, want 42.4 C", v.Temp)
+	}
+	if v.VCC != "3.25 V" {
+		t.Errorf("vcc = %q, want 3.25 V", v.VCC)
+	}
+	if v.Bias != "6.88 mA" {
+		t.Errorf("bias = %q, want 6.88 mA", v.Bias)
+	}
+	if v.TXPower != "-2.69 dBm" {
+		t.Errorf("tx power = %q, want -2.69 dBm", v.TXPower)
+	}
+	if v.RXPower != "" {
+		t.Errorf("rx power = %q, want empty (zero reading)", v.RXPower)
+	}
+}
+
+func TestFormatSFPDiagNegativeTemp(t *testing.T) {
+	v := FormatSFPDiag(SFPDiagEntry{
+		PortNum:    9,
+		SFPOptions: "0x00",
+		SFPTemp:    "0xff00", // -256 / 256 = -1.0 C
+	})
+	if v.Temp != "-1.0 C" {
+		t.Errorf("temp = %q, want -1.0 C", v.Temp)
+	}
+	if v.HasDDMI {
+		t.Error("ddmi should be false without the 0x40 option bit")
+	}
+}
+
+func TestLOS(t *testing.T) {
+	los1 := StatusEntry{SFPLos: float64(1)}
+	if !los1.LOS() {
+		t.Error("LOS(1) should be true")
+	}
+	los0 := StatusEntry{SFPLos: float64(0)}
+	if los0.LOS() {
+		t.Error("LOS(0) should be false")
+	}
+	losNil := StatusEntry{}
+	if losNil.LOS() {
+		t.Error("LOS(null) should be false")
+	}
+}
+
 func TestParseHexIndex(t *testing.T) {
 	tests := []struct {
 		s    string
@@ -295,5 +563,165 @@ func TestParseHexIndex(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("parseHexIndex(%q) = %d, want %d", tc.s, got, tc.want)
 		}
+	}
+}
+
+// encTestServer mocks the firmware /enc endpoint: it decrypts the request
+// body (nonce[12] || ct || tag[16]), records the plaintext command and
+// responds with an encrypted fixed body.
+func encTestServer(key []byte, respPlain string) (*httptest.Server, *sync.Mutex, *string) {
+	lastCmd := ""
+	var mu sync.Mutex
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/enc" {
+			http.NotFound(w, r)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		if len(body) < aeadNonceLen+aeadTagLen+1 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		ctLen := len(body) - aeadNonceLen - aeadTagLen
+		pt, err := aeadDecrypt(key, body[:aeadNonceLen], body[aeadNonceLen:aeadNonceLen+ctLen], body[len(body)-aeadTagLen:])
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		mu.Lock()
+		lastCmd = string(pt)
+		mu.Unlock()
+		respNonce := bytes.Repeat([]byte{0x22}, 12)
+		pkt, _ := aeadEncrypt(key, respNonce, []byte(respPlain))
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(pkt)
+	}))
+	return ts, &mu, &lastCmd
+}
+
+func TestPostEnc(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+	ts, mu, lastCmd := encTestServer(key, `{"result":"ok"}`)
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), &http.Client{})
+	if err := c.SetPSK(keyHex); err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.PostEnc("hostname test")
+	if err != nil {
+		t.Fatalf("PostEnc: %v", err)
+	}
+	if resp != `{"result":"ok"}` {
+		t.Fatalf("unexpected response: %q", resp)
+	}
+	mu.Lock()
+	got := *lastCmd
+	mu.Unlock()
+	if got != "hostname test" {
+		t.Fatalf("server received %q, want %q", got, "hostname test")
+	}
+}
+
+func TestPostEncNoPSK(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+	ts, _, _ := encTestServer(key, "{}")
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), &http.Client{})
+	if _, err := c.PostEnc("hostname test"); err == nil {
+		t.Fatal("PostEnc without PSK should fail")
+	}
+}
+
+func TestEncAPI(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+	ts, mu, lastCmd := encTestServer(key, `{"name":"test"}`)
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), &http.Client{})
+	if err := c.SetPSK(keyHex); err != nil {
+		t.Fatal(err)
+	}
+	body, err := c.EncAPI("/status.json")
+	if err != nil {
+		t.Fatalf("EncAPI: %v", err)
+	}
+	if string(body) != `{"name":"test"}` {
+		t.Fatalf("unexpected body: %q", body)
+	}
+	mu.Lock()
+	got := *lastCmd
+	mu.Unlock()
+	if got != "api /status.json" {
+		t.Fatalf("server received %q, want %q", got, "api /status.json")
+	}
+}
+
+func TestExecuteCommand(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+
+	var mu sync.Mutex
+	cmdHits, encHits := 0, 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/cmd":
+			mu.Lock()
+			cmdHits++
+			mu.Unlock()
+			w.WriteHeader(http.StatusOK)
+		case "/enc":
+			body, _ := io.ReadAll(r.Body)
+			ctLen := len(body) - aeadNonceLen - aeadTagLen
+			pt, err := aeadDecrypt(key, body[:aeadNonceLen], body[aeadNonceLen:aeadNonceLen+ctLen], body[len(body)-aeadTagLen:])
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			mu.Lock()
+			encHits++
+			mu.Unlock()
+			respNonce := bytes.Repeat([]byte{0x33}, 12)
+			pkt, _ := aeadEncrypt(key, respNonce, []byte(`{"result":"ok"}`))
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write(pkt)
+			_ = pt
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), &http.Client{})
+
+	// no PSK: command goes to plaintext /cmd
+	if err := c.ExecuteCommand("hostname switch-1"); err != nil {
+		t.Fatalf("ExecuteCommand (plain): %v", err)
+	}
+	if cmdHits != 1 || encHits != 0 {
+		t.Fatalf("plain routing: cmd=%d enc=%d, want cmd=1 enc=0", cmdHits, encHits)
+	}
+
+	// PSK configured: command goes to encrypted /enc
+	if err := c.SetPSK(keyHex); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.ExecuteCommand("hostname switch-1"); err != nil {
+		t.Fatalf("ExecuteCommand (enc): %v", err)
+	}
+	if cmdHits != 1 || encHits != 1 {
+		t.Fatalf("enc routing: cmd=%d enc=%d, want cmd=1 enc=1", cmdHits, encHits)
+	}
+
+	// invalid command is rejected before anything is sent
+	if err := c.ExecuteCommand("hostname bad..name"); err == nil {
+		t.Fatal("ExecuteCommand accepted invalid command")
+	}
+	if cmdHits != 1 || encHits != 1 {
+		t.Fatalf("invalid command was sent: cmd=%d enc=%d", cmdHits, encHits)
 	}
 }

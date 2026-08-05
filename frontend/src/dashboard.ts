@@ -1,3 +1,4 @@
+import './i18n';
 import { REFRESH_SECONDS, formatBytes } from './dashboard-utils';
 import { currentGraphIp, currentGraphPort, openGraph, renderGraph } from './dashboard-graph';
 import { openTransceiver, closeTransceiver } from './dashboard-transceiver';

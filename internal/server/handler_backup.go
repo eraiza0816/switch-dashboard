@@ -13,6 +13,16 @@ func (s *Server) handleAPIBackup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAPIReboot(w http.ResponseWriter, r *http.Request) {
+	ip := chi.URLParam(r, "ip")
+	client, err := s.clientFor(ip)
+	if err != nil {
+		s.writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err := client.Reboot(); err != nil {
+		s.writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

@@ -9,13 +9,21 @@
 </head>
 <body>
 <div class="header">
-  <h1>{{ .Title }} - Logs</h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <img src="/static/logo.png" alt="logo" style="height:38px;width:38px;border-radius:8px;object-fit:cover;border:1px solid #30363d;">
+    <h1>{{ .Title }} - Logs</h1>
+  </div>
   <div class="nav-links">
     <a href="/" data-i18n="nav.dashboard">Dashboard</a>
     <a href="/map" data-i18n="nav.map">Map</a>
     <a href="/config" data-i18n="nav.config">Config</a>
     <a href="/backups" data-i18n="nav.backups">Backups</a>
     <a href="/logs" class="active" data-i18n="nav.logs">Logs</a>
+    <a href="/api-docs" data-i18n="nav.api">API</a>
+    <select id="lang-select" style="margin-left:8px;padding:4px 6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:11px;cursor:pointer;" onchange="setLang(this.value)">
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
   </div>
 </div>
 

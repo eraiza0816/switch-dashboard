@@ -1,3 +1,4 @@
+import './i18n';
 import { showToast } from './dashboard-utils';
 
 let pollingInterval = null;

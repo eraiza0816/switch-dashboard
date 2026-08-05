@@ -1,3 +1,5 @@
+import './i18n';
+
     function setActiveLink(element) {
       document.querySelectorAll('.sidebar-link').forEach(link => {
         link.classList.remove('active');

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts ./src/map.ts --outdir ../static/dist --target browser --minify --splitting",
+    "build": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts ./src/map.ts ./src/api_docs.ts --outdir ../static/dist --target browser --minify --splitting",
     "watch": "bun build ./src/dashboard.ts ./src/logs.ts ./src/backups.ts --outdir ../static/dist --target browser --watch",
     "typecheck": "bun tsc --noEmit",
     "test": "vitest run",
