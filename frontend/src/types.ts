@@ -71,6 +71,7 @@ interface PortState {
   speed_rx_bps: number;
   note?: string;
   is_sfp?: boolean;
+  estimated?: boolean;
   sfp_vendor?: string;
   sfp_model?: string;
 }
@@ -96,6 +97,7 @@ interface SwitchData {
   mac_table: MACEntry[];
   mac_timestamp: number;
   status: string;
+  mock?: boolean;
   error?: string;
   timestamp: number;
   dhcp_snooping: SnoopingStatus;

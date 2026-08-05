@@ -22,6 +22,9 @@ const translations: Record<Lang, Record<string, string>> = {
     'status.link_up': 'Link Up',
     'status.link_down': 'Link Down',
     'status.disabled': 'Disabled',
+    'badge.demo': 'DEMO',
+    'badge.offline': 'OFFLINE',
+    'port.estimated': 'Estimated (packets x800)',
 
     'port.port': 'Port',
     'port.status': 'Status',
@@ -182,6 +185,9 @@ const translations: Record<Lang, Record<string, string>> = {
     'status.link_up': 'リンクアップ',
     'status.link_down': 'リンクダウン',
     'status.disabled': '無効',
+    'badge.demo': 'デモ',
+    'badge.offline': 'オフライン',
+    'port.estimated': '推定値 (パケット数×800)',
 
     'port.port': 'ポート',
     'port.status': '状態',
@@ -351,8 +357,11 @@ export function getLang(): Lang {
 export function setLang(lang: Lang) {
   currentLang = lang;
   try { if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, lang); } catch {}
-  if (typeof document !== 'undefined') document.documentElement.lang = lang;
-  updateUILang();
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lang;
+    syncLangSelect();
+    updateUILang();
+  }
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
@@ -380,6 +389,19 @@ function updateUILang() {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) (el as HTMLInputElement).placeholder = t(key);
   });
+}
+
+function syncLangSelect() {
+  if (typeof document === 'undefined') return;
+  document.querySelectorAll('#lang-select').forEach(el => {
+    (el as HTMLSelectElement).value = currentLang;
+  });
+}
+
+// Expose the language switcher to inline onchange handlers and run on load
+// (skip in test environments).
+if (typeof window !== 'undefined') {
+  (window as any).setLang = setLang;
 }
 
 // Run on load (skip in test environments)
