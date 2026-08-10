@@ -207,17 +207,13 @@ func main() {
 			password := sw.Password
 			logger.Info("connecting to switch", "ip", ip)
 
-			client, err := rtlplayground.New(ip, password)
+			client, err := rtlplayground.NewWithPSK(ip, password, sw.PSK)
 			if err != nil {
 				logger.Warn("switch unreachable, live data unavailable", "ip", ip, "error", err)
 				return
 			}
 			if sw.PSK != "" {
-				if err := client.SetPSK(sw.PSK); err != nil {
-					logger.Warn("invalid psk in config, continuing without encryption", "ip", ip, "error", err)
-				} else {
-					logger.Info("psk configured, write commands will use /enc", "ip", ip)
-				}
+				logger.Info("psk configured, login and write commands use /enc", "ip", ip)
 			}
 
 			info, err := client.ScrapeInformation()

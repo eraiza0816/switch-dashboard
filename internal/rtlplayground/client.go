@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +25,37 @@ type Client struct {
 }
 
 func New(ip, password string) (*Client, error) {
+	c, err := newBaseClient(ip)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.login(password); err != nil {
+		return nil, fmt.Errorf("login: %w", err)
+	}
+	return c, nil
+}
+
+// NewWithPSK creates a client and authenticates with the encrypted PSK
+// login challenge.  Use this when the switch runs in PSK mode, where the
+// firmware rejects password logins (see doc/authentication.md in
+// RTLPlayground).  With an empty pskHex it behaves like New.
+func NewWithPSK(ip, password, pskHex string) (*Client, error) {
+	c, err := newBaseClient(ip)
+	if err != nil {
+		return nil, err
+	}
+	if pskHex != "" {
+		if err := c.SetPSK(pskHex); err != nil {
+			return nil, err
+		}
+	}
+	if err := c.login(password); err != nil {
+		return nil, fmt.Errorf("login: %w", err)
+	}
+	return c, nil
+}
+
+func newBaseClient(ip string) (*Client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("cookiejar: %w", err)
@@ -32,11 +64,14 @@ func New(ip, password string) (*Client, error) {
 		httpClient: &http.Client{
 			Jar:     jar,
 			Timeout: 5 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 10 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
 		},
 		baseURL: fmt.Sprintf("http://%s", ip),
-	}
-	if err := c.login(password); err != nil {
-		return nil, fmt.Errorf("login: %w", err)
 	}
 	return c, nil
 }
@@ -48,13 +83,25 @@ func NewWithClient(ip string, httpClient *http.Client) *Client {
 	}
 }
 
-// login authenticates against the firmware's POST /login endpoint. The
-// firmware answers every login attempt with a 302 redirect: a valid password
-// is redirected to index.html with a Set-Cookie, an invalid one to login.html
-// without a cookie. Go's default redirect following would hide the
-// difference, so the first response is inspected directly.
+// login authenticates against the firmware's POST /login endpoint.  With a
+// pre-shared key configured the password form is replaced by the encrypted
+// login challenge (enc=), since the firmware rejects password logins while a
+// PSK is set.  The firmware answers every login attempt with a 302 redirect:
+// a valid password is redirected to index.html with a Set-Cookie, an invalid
+// one to login.html without a cookie.  Go's default redirect following would
+// hide the difference, so the first response is inspected directly.
 func (c *Client) login(password string) error {
 	c.password = password
+	var form string
+	if len(c.psk) == aeadKeyLen {
+		challenge, err := c.pskLoginChallenge()
+		if err != nil {
+			return fmt.Errorf("psk login challenge: %w", err)
+		}
+		form = "enc=" + challenge
+	} else {
+		form = "pwd=" + url.QueryEscape(password)
+	}
 	client := c.httpClient
 	if client.Jar != nil {
 		// Share the cookie jar so the session cookie lands where all
@@ -67,7 +114,12 @@ func (c *Client) login(password string) error {
 			},
 		}
 	}
-	resp, err := client.PostForm(c.baseURL+"/login", url.Values{"pwd": {password}})
+	req, err := http.NewRequest("POST", c.baseURL+"/login", strings.NewReader(form))
+	if err != nil {
+		return fmt.Errorf("login: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("post /login: %w", err)
 	}
@@ -87,6 +139,24 @@ func (c *Client) login(password string) error {
 		}
 	}
 	return fmt.Errorf("login: no session cookie in response")
+}
+
+// pskLoginChallenge encrypts the fixed login challenge with the pre-shared
+// key and returns hex(nonce[12] || ct || tag), the format the firmware's
+// /login expects in the enc= field.
+func (c *Client) pskLoginChallenge() (string, error) {
+	nonce := make([]byte, aeadNonceLen)
+	if _, err := rand.Read(nonce); err != nil {
+		// crypto/rand should never fail; fall back to a counter-based nonce
+		for i := range nonce {
+			nonce[i] = byte(i + 1)
+		}
+	}
+	enc, err := aeadEncrypt(c.psk, nonce, []byte("RTLP-LOGIN-1"))
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(enc), nil
 }
 
 // reAuthenticate refreshes the firmware session after a 401. JSON API
@@ -144,6 +214,13 @@ func (c *Client) post(path string, makeReq func() (*http.Request, error)) ([]byt
 		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
+			// The firmware signals a completed configuration upload by
+			// closing the connection (httpd.c: "ugly hack to signal
+			// connection finished after config upload"), so an EOF here
+			// means the config was accepted, not that the transfer failed.
+			if path == "/config" && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)) {
+				return nil, http.StatusOK, nil
+			}
 			return nil, 0, fmt.Errorf("post %s: %w", path, err)
 		}
 		defer resp.Body.Close()

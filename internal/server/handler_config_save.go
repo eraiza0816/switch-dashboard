@@ -160,14 +160,9 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 }
 
 func newRTLClient(ip, password, pskHex string) (*rtlplayground.Client, error) {
-	client, err := rtlplayground.New(ip, password)
+	client, err := rtlplayground.NewWithPSK(ip, password, pskHex)
 	if err != nil {
 		return nil, err
-	}
-	if pskHex != "" {
-		if err := client.SetPSK(pskHex); err != nil {
-			return nil, fmt.Errorf("invalid psk: %w", err)
-		}
 	}
 	return client, nil
 }

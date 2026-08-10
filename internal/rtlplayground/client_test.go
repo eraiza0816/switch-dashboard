@@ -725,3 +725,122 @@ func TestExecuteCommand(t *testing.T) {
 		t.Fatalf("invalid command was sent: cmd=%d enc=%d", cmdHits, encHits)
 	}
 }
+
+// The PSK login challenge must decrypt back to the fixed challenge string
+// with the same key.
+func TestPSKLoginChallenge(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+
+	c := NewWithClient("127.0.0.1:1", &http.Client{})
+	if err := c.SetPSK(keyHex); err != nil {
+		t.Fatal(err)
+	}
+	challenge, err := c.pskLoginChallenge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := hex.DecodeString(challenge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) != aeadNonceLen+len("RTLP-LOGIN-1")+aeadTagLen {
+		t.Fatalf("challenge length = %d, want %d", len(raw), aeadNonceLen+len("RTLP-LOGIN-1")+aeadTagLen)
+	}
+	pt, err := aeadDecrypt(key, raw[:aeadNonceLen], raw[aeadNonceLen:len(raw)-aeadTagLen], raw[len(raw)-aeadTagLen:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(pt) != "RTLP-LOGIN-1" {
+		t.Fatalf("challenge plaintext = %q, want RTLP-LOGIN-1", pt)
+	}
+}
+
+// In PSK mode the firmware rejects password logins, so NewWithPSK must send
+// the encrypted enc= challenge instead of pwd=, and scraping must work with
+// the resulting session.
+func TestNewWithPSKLogsInWithEncChallenge(t *testing.T) {
+	keyHex := strings.Repeat("42", 32)
+	key, _ := hex.DecodeString(keyHex)
+
+	var mu sync.Mutex
+	loginForm := ""
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		loginForm = string(body)
+		mu.Unlock()
+		ch, err := hex.DecodeString(strings.TrimPrefix(string(body), "enc="))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if len(ch) < aeadNonceLen+aeadTagLen {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		pt, err := aeadDecrypt(key, ch[:aeadNonceLen], ch[aeadNonceLen:len(ch)-aeadTagLen], ch[len(ch)-aeadTagLen:])
+		if err != nil || string(pt) != "RTLP-LOGIN-1" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "psk-session"})
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/information.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Information{HWVer: "PSK-SWITCH", SwVer: "v0.2.23"})
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	c, err := NewWithPSK(ts.Listener.Addr().String(), "ignored", keyHex)
+	if err != nil {
+		t.Fatalf("NewWithPSK: %v", err)
+	}
+	mu.Lock()
+	form := loginForm
+	mu.Unlock()
+	if !strings.HasPrefix(form, "enc=") {
+		t.Fatalf("login form = %q, want enc= challenge", form)
+	}
+	if strings.Contains(form, "pwd=") {
+		t.Fatalf("login form must not contain pwd=: %q", form)
+	}
+
+	info, err := c.ScrapeInformation()
+	if err != nil {
+		t.Fatalf("scrape after psk login: %v", err)
+	}
+	if info.HWVer != "PSK-SWITCH" {
+		t.Fatalf("hw ver = %q, want PSK-SWITCH", info.HWVer)
+	}
+}
+
+// The firmware signals a completed configuration upload by closing the
+// connection, so an EOF on /config must be treated as success.
+func TestConfigUploadEOFIsSuccess(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/config" {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				t.Fatal("hijack unsupported")
+			}
+			conn, _, err := hj.Hijack()
+			if err != nil {
+				t.Fatal(err)
+			}
+			io.Copy(io.Discard, r.Body)
+			conn.Close()
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer ts.Close()
+
+	c := NewWithClient(ts.Listener.Addr().String(), &http.Client{})
+	if err := c.UploadConfig("hostname test\n"); err != nil {
+		t.Fatalf("UploadConfig: %v", err)
+	}
+}
