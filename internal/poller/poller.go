@@ -25,10 +25,21 @@ type Poller struct {
 	notes        map[string]string
 	logger       *slog.Logger
 	historyStore *history.Store
+	demo         bool
+	failCount    int
 }
+
+const maxScrapeFailures = 3
 
 func (p *Poller) SetHistoryStore(store *history.Store) {
 	p.historyStore = store
+}
+
+// SetDemo enables demo mode. Demo mode seeds mock switch data (clearly
+// labelled) and writes mock bandwidth history to the history store. In
+// production mode no fabricated data is ever created.
+func (p *Poller) SetDemo(demo bool) {
+	p.demo = demo
 }
 
 func New(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger) *Poller {
@@ -72,8 +83,11 @@ func NewWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, 
 }
 
 func (p *Poller) Start() {
-	// Seed initial data so UI has something to show
-	p.seedMockData()
+	// Seed initial data so UI has something to show. Only in demo mode:
+	// production must never display or store fabricated data.
+	if p.demo {
+		p.seedMockData()
+	}
 	go p.run()
 }
 
@@ -118,6 +132,7 @@ func (p *Poller) seedMockData() {
 		Hostname:  "rtlplayground",
 		Ports:     ports,
 		Status:    "online",
+		Mock:      true,
 		Timestamp: now,
 		MACTable: []server.MACEntry{
 			{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001", Vendor: "Intel Corporate"},
@@ -151,10 +166,12 @@ func (p *Poller) run() {
 }
 
 func (p *Poller) poll() {
-	status, info, _, macTable := p.fetchData()
+	status, info, sfpDiag, macTable := p.fetchData()
 	if status == nil {
+		p.markOfflineIfStale()
 		return
 	}
+	p.failCount = 0
 
 	now := float64(time.Now().UnixNano()) / 1e9
 	ports := make([]server.PortState, 0, len(status))
@@ -165,8 +182,7 @@ func (p *Poller) poll() {
 
 		txPackets := rtlplayground.ParseHex(entry.TxG)
 		rxPackets := rtlplayground.ParseHex(entry.RxG)
-		txBytes := txPackets * 800
-		rxBytes := rxPackets * 800
+		txBytes, rxBytes, estimated := p.byteCounters(port, txPackets, rxPackets)
 
 		speedStr := rtlplayground.LinkSpeedString(entry.Link)
 		speedBPS := ParseLinkSpeed(speedStr)
@@ -226,8 +242,11 @@ func (p *Poller) poll() {
 			SpeedRX:   speedRX,
 			Note:      p.notes[noteKey],
 			IsSFP:     entry.IsSFP != 0,
+			Estimated: estimated,
 			SFPVendor: entry.SFPVendor,
 			SFPModel:  entry.SFPModel,
+			SFPSerial: entry.SFPSerial,
+			SFPLos:    entry.LOS(),
 		}
 		ports = append(ports, ps)
 
@@ -237,7 +256,9 @@ func (p *Poller) poll() {
 		}
 		p.history[histKey].Record(now, cumTX, cumRX, speedTX, speedRX, p.interval)
 
-		if p.historyStore != nil {
+		// Only measured values belong in the history store; estimated
+		// samples (packets*800 fallback) would pollute the charts.
+		if p.historyStore != nil && !estimated {
 			ts := time.Unix(0, int64(now*1e9))
 			p.historyStore.WriteSample(p.ip, itoa(int64(port)), ts, cumTX, cumRX, speedTX, speedRX)
 		}
@@ -326,17 +347,70 @@ func (p *Poller) poll() {
 	}
 	swData.Bandwidth = bwStatus
 
+	// Jumbo frames are enabled when any port's max-frame-length register
+	// exceeds the standard 1518-byte maximum (/mtu.json returns "0x" hex).
 	if len(mtuData) > 0 {
+		maxMTU := int64(0)
 		for _, m := range mtuData {
-			if m.PortNum > 0 {
-				swData.Jumbo.Enabled = true
-				swData.Jumbo.Size = m.MTU
-				break
+			if v := rtlplayground.ParseMTUHex(m.MTU); v > maxMTU {
+				maxMTU = v
 			}
+		}
+		if maxMTU > 1518 {
+			swData.Jumbo = server.JumboFrameStatus{Enabled: true, Size: itoa(maxMTU)}
 		}
 	}
 
+	if len(sfpDiag) > 0 {
+		diag := make([]server.SFPDiagStatus, 0, len(sfpDiag))
+		for _, d := range sfpDiag {
+			v := rtlplayground.FormatSFPDiag(d)
+			diag = append(diag, server.SFPDiagStatus{
+				Port:    v.Port,
+				Options: v.Options,
+				Temp:    v.Temp,
+				VCC:     v.VCC,
+				Bias:    v.Bias,
+				TXPower: v.TXPower,
+				RXPower: v.RXPower,
+				State:   v.State,
+				HasDDMI: v.HasDDMI,
+			})
+		}
+		swData.SFPDiag = diag
+	}
+
 	p.cache.UpdateSwitch(p.ip, swData)
+}
+
+// byteCounters returns the port's byte counters from /counters.json
+// (MIB index 0 = "In Octets" = RX, index 1 = "Out Octets" = TX).  When the
+// counter scrape fails the packet-based estimate (packets * 800) is used as
+// a fallback and the returned flag reports that the values are estimated,
+// not measured.
+func (p *Poller) byteCounters(port int, txPackets, rxPackets int64) (txBytes, rxBytes int64, estimated bool) {
+	if p.client == nil {
+		return txPackets * 800, rxPackets * 800, true
+	}
+	counters, err := p.client.ScrapeCounters(port)
+	if err != nil || len(counters) < 2 {
+		return txPackets * 800, rxPackets * 800, true
+	}
+	return rtlplayground.ParseHex(counters[1]), rtlplayground.ParseHex(counters[0]), false
+}
+
+// markOfflineIfStale flags the switch as offline after consecutive scrape
+// failures so the dashboard stops showing stale or seeded data as "online".
+func (p *Poller) markOfflineIfStale() {
+	p.failCount++
+	if p.failCount < maxScrapeFailures {
+		return
+	}
+	if prev := p.cache.GetSwitch(p.ip); prev != nil {
+		prev.Status = "offline"
+		prev.Error = "switch unreachable"
+		p.cache.UpdateSwitch(p.ip, prev)
+	}
 }
 
 func (p *Poller) fetchExtraData() ([]rtlplayground.EEEEntry, []rtlplayground.VLANListItem, []rtlplayground.LAGEntry, *rtlplayground.MirrorConfig, []rtlplayground.BandwidthEntry, []rtlplayground.MTUEntry) {

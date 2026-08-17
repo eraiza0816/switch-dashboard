@@ -122,7 +122,7 @@ cd frontend && bun run typecheck
 # E2E（Playwright、サーバー起動済みであること）
 cd e2e && npx playwright test
 
-# E2E（Docker 単体）
+# E2E（Docker 単体、-demo デモモードで起動）
 docker build -f Dockerfile.e2e -t switch-dashboard-e2e . && docker run --rm switch-dashboard-e2e
 ```
 

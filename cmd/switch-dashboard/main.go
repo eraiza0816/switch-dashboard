@@ -91,6 +91,7 @@ func (a *appConfig) IgnoredMACs() []string {
 func main() {
 	dataDir := flag.String("d", "", "data directory (default: ~/.local/share/switch-dashboard)")
 	configPath := flag.String("c", "", "config file path (default: <data-dir>/config.json)")
+	demo := flag.Bool("demo", false, "demo mode: seed mock data, no real switch required")
 	flag.Parse()
 
 	dd := resolveDataDir(*dataDir)
@@ -110,6 +111,7 @@ func main() {
 		cfg = &config.Config{}
 		cfg.SetDefaults()
 	}
+	cfg.DemoMode = *demo
 
 	logLevel := slog.LevelInfo
 	if lvl := cfg.Settings.LogLevel; lvl != "" {
@@ -194,7 +196,7 @@ func main() {
 
 	var pollers []*poller.Poller
 	for _, sw := range cfg.ActiveSwitches() {
-		p := startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore)
+		p := startPolling(cache, sw.IP, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore, cfg.DemoMode)
 		pollers = append(pollers, p)
 	}
 
@@ -205,20 +207,23 @@ func main() {
 			password := sw.Password
 			logger.Info("connecting to switch", "ip", ip)
 
-			client, err := rtlplayground.New(ip, password)
+			client, err := rtlplayground.NewWithPSK(ip, password, sw.PSK)
 			if err != nil {
-				logger.Warn("falling back to mock data", "ip", ip, "error", err)
+				logger.Warn("switch unreachable, live data unavailable", "ip", ip, "error", err)
 				return
+			}
+			if sw.PSK != "" {
+				logger.Info("psk configured, login and write commands use /enc", "ip", ip)
 			}
 
 			info, err := client.ScrapeInformation()
 			if err != nil {
-				logger.Warn("initial scrape failed, keeping mock", "ip", ip, "error", err)
+				logger.Warn("initial scrape failed, waiting for next poll", "ip", ip, "error", err)
 				return
 			}
 			logger.Info("connected, switching to live data", "ip", ip, "model", info.HWVer)
 
-			p := startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore)
+			p := startPollingWithClient(cache, client, ip, sw.Name, sw.Model, cfg.RefreshInterval, logger, notes, histStore, cfg.DemoMode)
 			pollers = append(pollers, p)
 		}()
 	}
@@ -291,8 +296,9 @@ func resolveDataDir(flagVal string) string {
 	return "./data"
 }
 
-func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store) *poller.Poller {
+func startPolling(cache *server.Cache, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store, demo bool) *poller.Poller {
 	p := poller.NewWithNotes(cache, ip, name, model, interval, notes, logger)
+	p.SetDemo(demo)
 	if histStore != nil {
 		p.SetHistoryStore(histStore)
 	}
@@ -300,8 +306,9 @@ func startPolling(cache *server.Cache, ip, name, model string, interval int, log
 	return p
 }
 
-func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store) *poller.Poller {
+func startPollingWithClient(cache *server.Cache, client *rtlplayground.Client, ip, name, model string, interval int, logger *slog.Logger, notes map[string]string, histStore *history.Store, demo bool) *poller.Poller {
 	p := poller.NewWithClientAndNotes(cache, client, ip, name, model, interval, notes, logger)
+	p.SetDemo(demo)
 	if histStore != nil {
 		p.SetHistoryStore(histStore)
 	}

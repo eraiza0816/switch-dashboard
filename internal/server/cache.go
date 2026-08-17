@@ -21,8 +21,11 @@ type PortState struct {
 	SpeedRX   int64  `json:"speed_rx_bps"`
 	Note      string `json:"note,omitempty"`
 	IsSFP     bool   `json:"is_sfp,omitempty"`
+	Estimated bool   `json:"estimated,omitempty"`
 	SFPVendor string `json:"sfp_vendor,omitempty"`
 	SFPModel  string `json:"sfp_model,omitempty"`
+	SFPSerial string `json:"sfp_serial,omitempty"`
+	SFPLos    bool   `json:"sfp_los,omitempty"`
 }
 
 type SwitchData struct {
@@ -37,6 +40,7 @@ type SwitchData struct {
 	MACTable   []MACEntry       `json:"mac_table"`
 	MACScraped int64            `json:"mac_timestamp"`
 	Status     string           `json:"status"`
+	Mock       bool             `json:"mock,omitempty"`
 	Error      string           `json:"error,omitempty"`
 	Timestamp  float64          `json:"timestamp"`
 	DHCP       SnoopingStatus   `json:"dhcp_snooping"`
@@ -47,6 +51,21 @@ type SwitchData struct {
 	LAG        []LAGStatus      `json:"lag,omitempty"`
 	Mirror     *MirrorStatus    `json:"mirror,omitempty"`
 	Bandwidth  []BWStatus       `json:"bandwidth,omitempty"`
+	SFPDiag    []SFPDiagStatus  `json:"sfp_diag,omitempty"`
+}
+
+// SFPDiagStatus is one /sfp_diag.json entry converted to display-ready
+// values (see rtlplayground.FormatSFPDiag).
+type SFPDiagStatus struct {
+	Port    int    `json:"port"`
+	Options string `json:"sfp_options,omitempty"`
+	Temp    string `json:"temperature,omitempty"`
+	VCC     string `json:"voltage,omitempty"`
+	Bias    string `json:"bias_current,omitempty"`
+	TXPower string `json:"tx_power,omitempty"`
+	RXPower string `json:"rx_power,omitempty"`
+	State   string `json:"state,omitempty"`
+	HasDDMI bool   `json:"ddmi_enabled,omitempty"`
 }
 
 type MACEntry struct {

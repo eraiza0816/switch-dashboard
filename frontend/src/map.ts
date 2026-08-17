@@ -1,4 +1,4 @@
-import { t, setLang, getLang } from './i18n';
+import { t } from './i18n';
 import { showToast } from './dashboard-utils';
 
 interface MapNode {
@@ -854,7 +854,6 @@ document.addEventListener('click', (e) => {
     if (results) results.innerHTML = '';
   }
 });
-(window as any).setLang = setLang;
 (window as any).renameClient = renameClient;
 (window as any).updateClientType = updateClientType;
 (window as any).forgetClient = forgetClient;

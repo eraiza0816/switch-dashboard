@@ -29,16 +29,23 @@ func (d *DB) Lookup(mac string) string {
 	if len(prefix) < 6 {
 		return ""
 	}
-	ouiKey := prefix[:6]
 
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	if v, ok := d.custom[ouiKey]; ok {
+	if v, ok := d.custom[prefix[:6]]; ok {
 		return v
 	}
-	if v, ok := d.entries[ouiKey]; ok {
-		return v
+	// Longest-prefix match: MA-S (9 hex), MA-M (7 hex), MA-L (6 hex).
+	// When the same 6-hex prefix is registered in both MA-L and MA-M,
+	// MA-L wins (IEEE assigns those separately, collisions are rare).
+	for _, n := range []int{9, 7, 6} {
+		if len(prefix) < n {
+			continue
+		}
+		if v, ok := d.entries[prefix[:n]]; ok {
+			return v
+		}
 	}
 	return ""
 }
@@ -110,7 +117,9 @@ func parseCSV(r io.Reader) (map[string]string, error) {
 		assignment := strings.TrimSpace(record[1])
 		org := strings.TrimSpace(record[2])
 
-		if org == "" || !strings.Contains(registry, "MA-L") {
+		// Accept MA-L (6 hex), MA-M (7 hex) and MA-S (9 hex) assignments.
+		// Matching by prefix keeps the check robust against header changes.
+		if org == "" || !(strings.HasPrefix(registry, "MA-L") || strings.HasPrefix(registry, "MA-M") || strings.HasPrefix(registry, "MA-S")) {
 			continue
 		}
 
@@ -132,7 +141,7 @@ func normalizeAssignment(a string) string {
 	if len(a) < 6 {
 		return ""
 	}
-	return a[:6]
+	return a
 }
 
 func normalize(mac string) string {

@@ -54,6 +54,23 @@ func (c *Client) ScrapeSFPEEPROM(slot int) (*SFPEEPROM, error) {
 	return &eeprom, nil
 }
 
+// ScrapeCounters fetches the per-port MIB counter registers from
+// /counters.json?port=N.  The response is an array of hex strings indexed by
+// MIB counter number: index 0 = "In Octets" (RX bytes), index 1 = "Out
+// Octets" (TX bytes) — see RTLPlayground tools/rtlplayground_exporter
+// mibCounterNames.
+func (c *Client) ScrapeCounters(port int) ([]string, error) {
+	data, err := c.get(fmt.Sprintf("/counters.json?port=%d", port))
+	if err != nil {
+		return nil, err
+	}
+	var counters []string
+	if err := json.Unmarshal(data, &counters); err != nil {
+		return nil, fmt.Errorf("counters.json unmarshal: %w", err)
+	}
+	return counters, nil
+}
+
 func (c *Client) ScrapeEEE() ([]EEEEntry, error) {
 	data, err := c.get("/eee.json")
 	if err != nil {

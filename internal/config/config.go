@@ -11,6 +11,7 @@ type SwitchConfig struct {
 	IP         string `json:"ip"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
+	PSK        string `json:"psk,omitempty"`
 	Model      string `json:"model"`
 	PortCount  int    `json:"port_count"`
 	Enabled    bool   `json:"enabled"`
@@ -46,6 +47,7 @@ type Config struct {
 	Settings              Settings               `json:"settings,omitempty"`
 	ScannerEnabled        bool                   `json:"scanner_enabled"`
 	TelemetryEnabled      bool                   `json:"telemetry_enabled"`
+	DemoMode              bool                   `json:"demo_mode"`
 	path                  string
 }
 

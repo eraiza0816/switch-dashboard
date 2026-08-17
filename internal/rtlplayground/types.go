@@ -36,6 +36,18 @@ type StatusEntry struct {
 
 func (s *StatusEntry) HasSFP() bool { return s.IsSFP != 0 }
 
+// LOS reports the SFP RX-loss-of-signal state.  The firmware emits sfp_los
+// as a JSON number (0/1) or null when the machine has no LOS pin.
+func (s *StatusEntry) LOS() bool {
+	switch v := s.SFPLos.(type) {
+	case float64:
+		return v != 0
+	case bool:
+		return v
+	}
+	return false
+}
+
 type SFPDiagEntry struct {
 	PortNum    int    `json:"portNum"`
 	SFPOptions string `json:"sfp_options"`

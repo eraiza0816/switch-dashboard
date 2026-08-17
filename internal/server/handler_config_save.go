@@ -21,6 +21,7 @@ type saveSwitchEntry struct {
 	Name      string `json:"name"`
 	IP        string `json:"ip"`
 	Password  string `json:"password"`
+	PSK       string `json:"psk,omitempty"`
 	Model     string `json:"model"`
 	PortCount int    `json:"port_count"`
 	Enabled   bool   `json:"enabled"`
@@ -48,6 +49,7 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 	names := r.Form["name[]"]
 	ips := r.Form["ip[]"]
 	passwords := r.Form["password[]"]
+	psks := r.Form["psk[]"]
 	models := r.Form["model[]"]
 
 	for i := 0; i < len(ips); i++ {
@@ -58,12 +60,16 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 			Name:      names[i],
 			IP:        ips[i],
 			Password:  "",
+			PSK:       "",
 			Model:     "RTLPlayground",
 			PortCount: 8,
 			Enabled:   true,
 		}
 		if i < len(passwords) {
 			entry.Password = passwords[i]
+		}
+		if i < len(psks) {
+			entry.PSK = psks[i]
 		}
 		if i < len(models) && models[i] != "" {
 			entry.Model = models[i]
@@ -110,32 +116,10 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 			existing.Name = sw.Name
 			existing.Model = sw.Model
 			s.Cache.UpdateSwitch(sw.IP, existing)
-		} else {
-			// New switch: seed with mock data so UI shows something
-			s.Cache.UpdateSwitch(sw.IP, &SwitchData{
-				Name:   sw.Name,
-				IP:     sw.IP,
-				Model:  sw.Model,
-				Status: "online",
-				Ports: []PortState{
-					{Port: "1", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 100000, CumRX: 200000, SpeedTX: 800, SpeedRX: 1600},
-					{Port: "2", Status: "down", Link: "Link Down"},
-					{Port: "3", Status: "up", Link: "Link Up", Speed: "2.5G", Duplex: "Full", CumTX: 50000, CumRX: 100000, SpeedTX: 400, SpeedRX: 800},
-					{Port: "4", Status: "disable", Link: "Disabled"},
-					{Port: "5", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 200000, CumRX: 400000, SpeedTX: 1600, SpeedRX: 3200, IsSFP: true},
-					{Port: "6", Status: "up", Link: "Link Up", Speed: "10G", Duplex: "Full", CumTX: 200000, CumRX: 400000, SpeedTX: 1600, SpeedRX: 3200, IsSFP: true},
-				},
-				MACTable: []MACEntry{
-					{MAC: "AA:BB:CC:DD:EE:01", Type: "l", Port: "1", VLAN: "001"},
-					{MAC: "AA:BB:CC:DD:EE:02", Type: "l", Port: "3", VLAN: "001"},
-					{MAC: "AA:BB:CC:DD:EE:03", Type: "s", Port: "5", VLAN: "010"},
-				},
-				MACScraped: 0,
-				DHCP:       SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
-				IGMP:       IGMPStatus{Enabled: false},
-				Jumbo:      JumboFrameStatus{Enabled: false, Size: "Disabled"},
-			})
 		}
+		// New switches are intentionally NOT seeded: the dashboard shows
+		// data only after the first successful scrape, so fabricated
+		// "online" data can never appear in production.
 	}
 
 	// Remove cached switches that are no longer in config
@@ -157,9 +141,9 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 		sw := sw
 		s.Logger.Info("attempting background connection", "ip", sw.IP)
 		go func() {
-			client, err := newRTLClient(sw.IP, sw.Password)
+			client, err := newRTLClient(sw.IP, sw.Password, sw.PSK)
 			if err != nil {
-				s.Logger.Info("switch not reachable, keeping mock data", "ip", sw.IP, "error", err.Error())
+				s.Logger.Info("switch not reachable, live data will appear after recovery", "ip", sw.IP, "error", err.Error())
 				return
 			}
 			info, err := client.ScrapeInformation()
@@ -175,8 +159,12 @@ func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/config?saved=1&lang=%s", r.FormValue("lang")), http.StatusFound)
 }
 
-func newRTLClient(ip, password string) (*rtlplayground.Client, error) {
-	return rtlplayground.New(ip, password)
+func newRTLClient(ip, password, pskHex string) (*rtlplayground.Client, error) {
+	client, err := rtlplayground.NewWithPSK(ip, password, pskHex)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, logger *slog.Logger) {
@@ -215,6 +203,7 @@ func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, 
 			RXBytes:   rxBytes,
 			TXPackets: txPackets,
 			RXPackets: rxPackets,
+			Estimated: true,
 			IsSFP:     entry.IsSFP != 0,
 			SFPVendor: entry.SFPVendor,
 			SFPModel:  entry.SFPModel,
@@ -233,13 +222,31 @@ func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, 
 
 	jumbo := JumboFrameStatus{Enabled: false, Size: "Disabled"}
 	if len(mtu) > 0 {
+		maxMTU := int64(0)
 		for _, m := range mtu {
-			if m.PortNum > 0 {
-				jumbo.Enabled = true
-				jumbo.Size = m.MTU
-				break
+			if v := rtlplayground.ParseMTUHex(m.MTU); v > maxMTU {
+				maxMTU = v
 			}
 		}
+		if maxMTU > 1518 {
+			jumbo = JumboFrameStatus{Enabled: true, Size: fmt.Sprintf("%d", maxMTU)}
+		}
+	}
+
+	sfpDiagStatus := make([]SFPDiagStatus, 0, len(sfpDiag))
+	for _, d := range sfpDiag {
+		v := rtlplayground.FormatSFPDiag(d)
+		sfpDiagStatus = append(sfpDiagStatus, SFPDiagStatus{
+			Port:    v.Port,
+			Options: v.Options,
+			Temp:    v.Temp,
+			VCC:     v.VCC,
+			Bias:    v.Bias,
+			TXPower: v.TXPower,
+			RXPower: v.RXPower,
+			State:   v.State,
+			HasDDMI: v.HasDDMI,
+		})
 	}
 
 	swData := &SwitchData{
@@ -252,13 +259,13 @@ func doPoll(client *rtlplayground.Client, cache *Cache, ip, name, model string, 
 		DHCP:     SnoopingStatus{Enabled: false, Ports: make(map[string]string)},
 		IGMP:     IGMPStatus{Enabled: false},
 		Jumbo:    jumbo,
+		SFPDiag:  sfpDiagStatus,
 	}
 	if info != nil {
 		swData.MAC = info.MACAddress
 		swData.Firmware = info.SwVer
 		swData.Hostname = info.Hostname
 	}
-	_ = sfpDiag
 	_ = eee
 	_ = vlanList
 	_ = lag

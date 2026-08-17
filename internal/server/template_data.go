@@ -28,6 +28,7 @@ type SwitchFormData struct {
 	IP         string
 	Username   string
 	Password   string
+	PSK        string
 	Model      string
 	PortCount  int
 	ParentIP   string

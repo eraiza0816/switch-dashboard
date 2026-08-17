@@ -48,7 +48,8 @@ mkdir -p /tmp/e2e-data
 cat > /tmp/e2e-data/config.json << 'EOF'
 {"title":"E2E","refresh_interval":30,"switches":[{"name":"Test","ip":"192.168.10.247","password":"1234","model":"RTLPlayground","port_count":8,"enabled":true}]}
 EOF
-./switch-dashboard -d /tmp/e2e-data &
+# -demo: デモモード（モックデータを投入、実スイッチ不要）
+./switch-dashboard -d /tmp/e2e-data -demo &
 
 # テスト実行
 cd e2e && npx playwright test
@@ -75,7 +76,10 @@ cd e2e && OUT_DIR=../images npx playwright test tests/screenshots.spec.ts
 
 ## 注意事項
 
-- Go サーバーはモックデータを自動生成するため、実際のスイッチは不要
-- DuckDB (`history.duckdb`) が自動作成され、モック履歴データ（過去2分間の帯域）が投入される
+- Go サーバーは `-demo` フラグでデモモードになり、モックデータを自動生成するため、実際のスイッチは不要
+- デモモードで表示されるデータは「デモデータ」として UI 上に明示される（DEMO バッジ）
+- 本番モード（`-demo` なし）ではモックデータは生成されず、到達不能なスイッチは offline 表示になる
+- DuckDB (`history.duckdb`) が自動作成され、デモモード時はモック履歴データ（過去2分間の帯域）が投入される。本番モードでは推定値（パケット数×800）のサンプルは履歴に記録されない
+- スクリーンショット（`images/*.png`）はテスト時のサーバー状態を撮影したものである。`-demo` なしで実スイッチに接続できている場合は実データ、それ以外はデモデータ（UI に DEMO バッジ表示）になる
 - Playwright の最新版は `npm install @playwright/test@latest` で更新可能
 - テストデータは `-d` で指定したディレクトリに保存され、プロジェクトルートを汚染しない

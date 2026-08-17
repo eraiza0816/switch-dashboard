@@ -68,6 +68,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		Name      string `json:"name"`
 		IP        string `json:"ip"`
 		Password  string `json:"password"`
+		PSK       string `json:"psk"`
 		Model     string `json:"model"`
 		PortCount int    `json:"port_count"`
 		Enabled   bool   `json:"enabled"`
@@ -93,6 +94,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 			Name:      sw.Name,
 			IP:        sw.IP,
 			Password:  sw.Password,
+			PSK:       sw.PSK,
 			Model:     sw.Model,
 			PortCount: sw.PortCount,
 			Enabled:   sw.Enabled,

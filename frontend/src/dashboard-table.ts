@@ -1,4 +1,5 @@
 import { enabledColumns, PORTS_WRAP_THRESHOLD, formatBytes, formatBps, formatPkts, speedClass, formatTime } from './dashboard-utils';
+import { t } from './i18n';
 import { speedUnit } from './dashboard-graph';
 
 let refreshDashboard: () => void = () => {};
@@ -178,10 +179,11 @@ const COLUMN_DEFS = {
     render: (p, sw) => {
       const isSfp = p.is_sfp;
       const speed = p.speed || 'Auto';
+      const est = p.estimated ? `<span class="est-marker" title="${t('port.estimated')}">*</span>` : '';
       if (isSfp) {
-        return `<span class="sfp-speed-link" onclick="openTransceiver('${sw.ip}','${p.port}','${sw.name}')" title="Click to view SFP+ Transceiver Diagnostics">${speed} <svg viewBox="0 0 24 24" style="width: 10px; height: 10px; fill: currentColor; display: inline-block;"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0-7C7 2 2.73 5.11 1 9.5 2.73 13.89 7 17 12 17s9.27-3.11 11-7.5C21.27 5.11 17 2 12 2zm0 13a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg></span>`;
+        return `<span class="sfp-speed-link" onclick="openTransceiver('${sw.ip}','${p.port}','${sw.name}')" title="Click to view SFP+ Transceiver Diagnostics">${speed}${est} <svg viewBox="0 0 24 24" style="width: 10px; height: 10px; fill: currentColor; display: inline-block;"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0-7C7 2 2.73 5.11 1 9.5 2.73 13.89 7 17 12 17s9.27-3.11 11-7.5C21.27 5.11 17 2 12 2zm0 13a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg></span>`;
       } else {
-        return speed;
+        return `${speed}${est}`;
       }
     }
   },
@@ -1045,12 +1047,20 @@ export function renderSwitch(sw) {
     </div>
   `;
 
+  const switchBadges = [];
+  if (sw.mock) {
+    switchBadges.push(`<span class="mock-badge" title="${t('badge.demo')}">${t('badge.demo')}</span>`);
+  }
+  if (sw.status === 'offline') {
+    switchBadges.push(`<span class="offline-badge" title="${t('badge.offline')}">${t('badge.offline')}</span>`);
+  }
+
   return `<div class="switch-card">
     <div class="switch-header">
       <div style="display: flex; align-items: center; gap: 12px;">
         <img src="/api/switches/${sw.ip}/image" alt="Switch" style="height: 24px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
         <div>
-          <h2>${sw.name}</h2>
+          <h2>${sw.name} ${switchBadges.join(' ')}</h2>
           <span style="font-size:12px;color:#b1bac4;display:flex;align-items:center;gap:8px;">
             <a href="http://${sw.ip}/" target="_blank" style="color:#58a6ff;text-decoration:none" title="Open switch web UI">${sw.ip}</a>
             <span style="color:#30363d">|</span>

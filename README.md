@@ -6,8 +6,8 @@
 
 ## 機能
 
-- **リアルタイムポート状態**: リンク状態、速度、 duplex、TX/RX カウンター・パケット数
-- **帯域チャート**: ライブ / 1時間 / 24時間 のロールング履歴（Chart.js + DuckDB、1年保持）
+- **リアルタイムポート状態**: リンク状態、速度、 duplex、TX/RX カウンター・パケット数（連続失敗時は offline 表示になり、最終データは保持）
+- **帯域チャート**: ライブ / 1時間 / 24時間 のロールング履歴（Chart.js + DuckDB、1年保持）。推定値（パケット数×800 のフォールバック）は履歴に記録されず、UI 上に「*」で明示
 - **SFP+ DDMI**: 温度、電圧、バイアス電流、TX/RX パワーテレメトリー
 - **MAC フォワーディングテーブル**: 検索・フィルタリング・自動ベンダー解決（IEEE OUI）
 - **EEE / VLAN / LAG / MTU / ミラー / 帯域制御**: 状態表示
@@ -18,7 +18,7 @@
 - **ログビューア**: ブラウザ上でサーバーログ表示、レベル制御、ダウンロード
 - **設定エディタ**: Web ベースのスイッチ・ダッシュボード設定編集
 - **ダークガラスモーフィック UI**: カスタムタイポグラフィ、すりガラス風コンポーネント
-- **MAC ベンダー自動解決**: IEEE OUI データベースを自動ダウンロード、カスタム上書き対応
+- **MAC ベンダー自動解決**: IEEE OUI データベースを自動ダウンロード（MA-L / MA-M / MA-S 対応）、カスタム上書き対応
 
 ## 対応ハードウェア
 
@@ -44,6 +44,7 @@ cat > ~/.local/share/switch-dashboard/config.json << 'EOF'
       "name": "Core Switch",
       "ip": "192.168.10.247",
       "password": "1234",
+      "psk": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
       "model": "RTLPlayground",
       "port_count": 8,
       "enabled": true
@@ -51,12 +52,27 @@ cat > ~/.local/share/switch-dashboard/config.json << 'EOF'
   ]
 }
 EOF
+```
+
+`psk` は省略可能な pre-shared key（64 hex 文字、RTLPlayground の PSK 認証機能用）。
+設定するとダッシュボードのログインは暗号化チャレンジ（`enc=`）、コマンド送信は暗号化 `/enc` エンドポイント経由になる。
+PSK モードのスイッチ（`psk` を設定済みのスイッチ）はパスワードログインを拒否するため、`psk` を設定したスイッチには必ずこの key も設定すること（読み取り API はセッション取得後に従来どおり平文）。
 
 # 実行（データは ~/.local/share/switch-dashboard/ に保存）
 ./switch-dashboard
 ```
 
 http://localhost:8081 を開く
+
+### デモモード
+
+実スイッチなしで UI を確認する場合は `-demo` フラグで起動します。デモモードではモックデータ
+（ポート状態・MAC テーブル・帯域履歴）が投入されますが、UI 上に **DEMO** バッジで明示され、
+本番モード（`-demo` なし）ではモックデータは一切生成されません。
+
+```bash
+./switch-dashboard -d . -demo
+```
 
 ### データディレクトリの変更
 
@@ -188,3 +204,6 @@ docker build -f Dockerfile.e2e -t switch-dashboard-e2e . && docker run --rm swit
 # スクリーンショット更新
 cd e2e && OUT_DIR=../images npx playwright test tests/screenshots.spec.ts
 ```
+
+## 参考
+このリポジトリは [switch-dashboard](https://github.com/byte4geek/switch-dashboard) をGolangに移植して，機能拡張をしたものです。

@@ -2,7 +2,7 @@ package server
 
 import (
 	"net/http"
-	"strings"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -49,30 +49,48 @@ type sfpTransceiverData struct {
 	DDMIEnabled string `json:"ddmi_enabled,omitempty"`
 }
 
+// parseSFPFromSwitchData builds the transceiver response from the data the
+// poller scraped from the switch (/status.json SFP fields + /sfp_diag.json).
+// The firmware does not expose EEPROM fields like vendor OUI, revision or
+// type/connector codes, so those stay empty.
 func parseSFPFromSwitchData(sw *SwitchData) *sfpTransceiverData {
 	for _, p := range sw.Ports {
-		if !strings.HasPrefix(p.Speed, "10G") && p.Speed != "2.5G" && p.Speed != "1G" {
+		if !p.IsSFP {
+			continue
+		}
+		if p.SFPVendor == "" && p.SFPModel == "" {
 			continue
 		}
 		info := &sfpTransceiverData{
-			VendorName:  "Lightron Inc.",
-			VendorPN:    "WSPXG-ES3LC-IHA",
-			VendorSN:    "LTN2407A01234",
-			VendorRev:   "A1",
-			Type:        "SFP+ 10G SR",
-			Connector:   "LC",
-			Compliance:  "10G Ethernet",
-			Wavelength:  "850 nm",
-			Bitrate:     "10.3125 Gbps",
-			Temperature: "42.5 C",
-			Voltage:     "3.31 V",
-			Current:     "8.24 mA",
-			TXPower:     "-2.35 dBm",
-			RXPower:     "-3.12 dBm",
-			OEPresent:   "1",
-			LOS:         "0",
+			VendorName: p.SFPVendor,
+			VendorPN:   p.SFPModel,
+			VendorSN:   p.SFPSerial,
+			OEPresent:  "1",
+			LOS:        boolStr(p.SFPLos),
+		}
+		for _, d := range sw.SFPDiag {
+			if d.Port == parsePortNum(p.Port) {
+				info.Temperature = d.Temp
+				info.Voltage = d.VCC
+				info.Current = d.Bias
+				info.TXPower = d.TXPower
+				info.RXPower = d.RXPower
+				info.DDMIEnabled = boolStr(d.HasDDMI)
+			}
 		}
 		return info
 	}
 	return nil
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
+
+func parsePortNum(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
 }

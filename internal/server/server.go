@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/eraiza0816/switch-dashboard/internal/history"
 	"github.com/eraiza0816/switch-dashboard/internal/logbuf"
 	"github.com/eraiza0816/switch-dashboard/internal/oui"
+	"github.com/eraiza0816/switch-dashboard/internal/rtlplayground"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -45,6 +47,21 @@ type Server struct {
 	DeviceTemplatesDir  string
 	DuckDBReady         bool
 	ConfigReload        func() error
+	SwitchClientFactory func(ip string) (*rtlplayground.Client, error)
+}
+
+// clientFor returns a RTLPlayground client for a configured switch.  Tests
+// can inject SwitchClientFactory to avoid real network access.
+func (s *Server) clientFor(ip string) (*rtlplayground.Client, error) {
+	if s.SwitchClientFactory != nil {
+		return s.SwitchClientFactory(ip)
+	}
+	for _, sw := range s.Config.Switches() {
+		if sw.IP == ip {
+			return newRTLClient(sw.IP, sw.Password, sw.PSK)
+		}
+	}
+	return nil, fmt.Errorf("switch %q is not configured", ip)
 }
 
 func (s *Server) loadLayoutPositions() {
